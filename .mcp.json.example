@@ -1,0 +1,27 @@
+{
+  "_comment": "Copy this file to .mcp.json (gitignored) and fill in the paths for your machine. Claude Code reads .mcp.json at session start to launch each MCP server. NOTE: Outlook credentials are NOT set here — the outlook server loads them from outlook-mcp/.env. See README.md > Setup.",
+  "mcpServers": {
+    "gmail-manager": {
+      "type": "stdio",
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@gongrzhe/server-gmail-autoauth-mcp"],
+      "env": {
+        "GMAIL_OAUTH_PATH": "C:/Users/<you>/.gmail-mcp/gcp-oauth.keys.json",
+        "GMAIL_CREDENTIALS_PATH": "C:/Users/<you>/.gmail-mcp/credentials.json"
+      }
+    },
+    "outlook-manager": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["<absolute-path-to-repo>/outlook-mcp/index.js"],
+      "env": {
+        "USE_TEST_MODE": "false"
+      }
+    },
+    "whatsapp-manager": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["<absolute-path-to-repo>/whatsapp-mcp/index.js"]
+    }
+  }
+}

@@ -1,0 +1,45 @@
+# --- dependencies ---
+node_modules/
+
+# --- secrets / credentials ---
+.env
+.env.local
+# real MCP config holds machine paths; ship .mcp.json.example instead
+.mcp.json
+
+# --- account session material ---
+# WhatsApp login keys/sessions (also ignored by whatsapp-mcp/.gitignore)
+whatsapp-mcp/auth-store/
+# OAuth tokens (normally stored under home dir; ignore here too for safety)
+.outlook-mcp-tokens.json
+
+# --- runtime state ---
+state.json
+
+# --- Outlook email-data dumps (entry-IDs + message metadata) ---
+outlook-mcp/*.txt
+outlook-mcp/batch*.json
+outlook-mcp/batches*.json
+outlook-mcp/trash*.json
+outlook-mcp/parsed_*.json
+outlook-mcp/unmatched.json
+
+# --- dated session/report dumps ---
+SESSION_REPORT_*.json
+cleanup_report_*.json
+last-run-summary.md
+EXECUTION_GUIDE_*.md
+INDEX_*.md
+README_CLEANUP_*.md
+classify2023.js
+classify_batch.py
+
+# --- local tooling / editor ---
+.claude/
+.cursor/
+.worktrees/
+outlook-mcp/~/
+
+# --- stray debug / credential artifacts ---
+trace_auth.js
+whatsapp-mcp/*.png

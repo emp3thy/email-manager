@@ -1,0 +1,284 @@
+const keep = ["elephant.co.uk","accounts.google.com","accountprotection.microsoft.com","firstdirect.com","mandsbank.com","octopus.energy","americanexpress.com","clearscore.com","virginmediao2.co.uk","admiral.co.uk","petdrugsonline.co.uk","dpd.co.uk","yodel.co.uk","github.com","google.com","account.netflix.com","stripe.com","patreon.com","microsoft.com","sims-communications.co.uk","audible.co.uk","amazonaws.com","gmail.com","hotmail.com","outlook.com","bestinvest.co.uk","vanguardinvestor.co.uk","virginmedia.co.uk","email.idmobile.co.uk","bromley.gov.uk","bp.com","saintolaves.net","ipo.gov.uk","advice.hmrc.gov.uk","email.ajbell.co.uk","screwfix.com","notifications.virginmedia.co.uk","tesla.com","royalalberthall.com","tax.service.gov.uk"];
+
+const trash = ["linkedin.com","em.linkedin.com","update.just-eat.co.uk","amazon.co.uk","paypal.co.uk","spotify.com","facebookmail.com","easyjet.com","nutracheck.co.uk","dominos.co.uk","mail.sockshop.co.uk","dhlecommerce.co.uk","sfmail.gatwickairport.com","growatt-service.com","web.toast.co.uk","booking.com","trustpilotmail.com","tripadvisor.com","eml.johnlewis.com","nakedwines.com","newsteadwood.co.uk","emails.telegraph.co.uk","wisepay.co.uk","shipping.amazon.co.uk","bigeasy.co.uk","wjking.co.uk","marketing.photobox.co.uk","qualtrics-survey.com","positecgroup.com","growingsmiles.co.uk","newsletter.hottershoes.com","bigumigu.com","service.visionexpress.com","geraldgiles.co.uk","emails.virginatlantic.com","reviews.co.uk","cititec.com","germainhotels.com","reply.lights.co.uk"];
+
+function matchDomain(email, patterns) {
+  email = email.toLowerCase();
+  for (const p of patterns) {
+    if (p === "lovehoney") { if (email.includes("lovehoney")) return true; }
+    else if (email === p || email.endsWith("@" + p) || email.endsWith("." + p)) return true;
+  }
+  return false;
+}
+
+function matchSubjectTrash(subj) {
+  const s = subj.toLowerCase();
+  if (s.match(/out of.*storage/) || s.match(/storage.*full/)) return true;
+  return false;
+}
+
+// All 183 unique 2020 emails from 4 search batches
+const emails = [
+// Batch 1: Dec-Nov 17 2020
+["annaliesehortonpilates@gmail.com","Happy New Year!!","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPlPiOZAAAA"],
+["Chloe.J.Stevens@outlook.com","kahoot","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPlPiOFAAAA"],
+["Helen.finely@outlook.com","Fwd: Reset your password for Oyster photocard","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPlPiNxAAAA"],
+["Helen.finely@outlook.com","Fwd: Oyster photocard application","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPlPiNtAAAA"],
+["Helen.finely@outlook.com","Fwd: Lesson Overview and Invoice","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPjNw23AAAA"],
+["reviews@stamped.io","feedback on Fired Creations purchase","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPe62AaAAAA"],
+["donotreply@dartford-crossing-charge.service.gov.uk","Dart-Charge password reset","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPe61_tAAAA"],
+["gethinstevens@hotmail.com","Reminder: Annabel Stevens birthday","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPdKObiAAAA"],
+["Athena.Giddings@sjdaccountancy.com","RE: Faster Solutions Nov 20 VAT","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPdKObSAAAA"],
+["Athena.Giddings@sjdaccountancy.com","RE: Confirmation Statement","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPcx1ozAAAA"],
+["Athena.Giddings@sjdaccountancy.com","Faster Solutions Nov 20 VAT Calc","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPcx1oxAAAA"],
+["annaliesehortonpilates@gmail.com","Studio update","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPcx1ouAAAA"],
+["gethinstevens@hotmail.com","Reminder: Danny O Reilly birthday","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPcx1otAAAA"],
+["donotreply@seetickets.com","Confirm Your See Tickets Account","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPaflr0AAAA"],
+["donotreply@seetickets.com","Welcome to See Tickets","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPaflrzAAAA"],
+["Athena.Giddings@sjdaccountancy.com","RE: status update Faster Solutions","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPYnzttAAAA"],
+["Athena.Giddings@sjdaccountancy.com","Confirmation Statement","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPYnztrAAAA"],
+["Athena.Giddings@sjdaccountancy.com","Automatic reply: status update","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPYnztZAAAA"],
+["notifications@eoriginal.net","Tesla Finance Agreement","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPYBBaPAAAA"],
+["Helen.finely@outlook.com","Fwd: 4 Beech Copse Warm air service","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPXy0VYAAAA"],
+["Helen.finely@outlook.com","Fwd: 4 Beech Copse Warm air service","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPUaWkADAAAAA=="],
+["SMTPUpdates@tbsmobility.com","BCA Logistics Collection Report","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPUaWkABQAAAA=="],
+["Sana.Dilawar@sjdaccountancy.com","RE: Self-Assessment Tax Return","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPUaWkAAwAAAA=="],
+["Helen.finely@outlook.com","BP","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPUaWkAAQAAAA=="],
+["gethinstevens@hotmail.com","Gorilla glue or Shoe Goo","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPUaWj9AAAA"],
+["yourdelivery@dpdlocal.co.uk","Artwool order delivered today","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPUaWjxAAAA"],
+["yourorder@dpdlocal.co.uk","Artwool order due for delivery","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPUaWjeAAAA"],
+["Sana.Dilawar@sjdaccountancy.com","Automatic reply: Self-Assessment","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPUaWjQAAAA"],
+["annaliesehortonpilates@gmail.com","Fwd: Studio reopening","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPUaWjGAAAA"],
+["Athena.Giddings@sjdaccountancy.com","RE: VAT Return Reminder","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPT0wB9UQAAAA=="],
+["Athena.Giddings@sjdaccountancy.com","RE: VAT Return Reminder","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPT0wB9SQAAAA=="],
+["Athena.Giddings@sjdaccountancy.com","RE: VAT Return Reminder","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPSq3vNAAAA"],
+["Athena.Giddings@sjdaccountancy.com","VAT Return Reminder","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPSq3u_AAAA"],
+["Chloe.J.Stevens@outlook.com","ASOS DESIGN long sleeve shirt","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPJOHn2AAAA"],
+["Athena.Giddings@sjdaccountancy.com","Automatic reply: DEC-19 YE","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPJOHnpAAAA"],
+["Chloe.J.Stevens@outlook.com","exploding box","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPJOHnnAAAA"],
+["Athena.Giddings@sjdaccountancy.com","DEC-19 YE Faster Solutions","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPJOHnZAAAA"],
+["gethinstevens@hotmail.com","Reminder: Donah birthday","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPJOHnRAAAA"],
+["bestinvest@service.bestinvest.co.uk","scheduled maintenance","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPJOHmxAAAA"],
+["info@sjdaccountancy.com","free meeting request","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPJOHmBAAAA"],
+["dobsonpoole@yahoo.co.uk","Re: 4 Beech Copse roof survey","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPJOHluAAAA"],
+["Athena.Giddings@sjdaccountancy.com","RE: Investment account","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPJOHloAAAA"],
+["Helen.finely@outlook.com","4 Beech Copse roof survey","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPJOHkyAAAA"],
+["Abbie@rivervale.co.uk","RE: GF69TWJ","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPJOHkmAAAA"],
+["Abbie@rivervale.co.uk","RE: GF69TWJ","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPJOHkjAAAA"],
+["Abbie@rivervale.co.uk","GF69TWJ","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPJOHkhAAAA"],
+["Athena.Giddings@sjdaccountancy.com","Investment account","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPJOHkYAAAA"],
+["info@sjdaccountancy.com","Job Retention Scheme Update","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPJOHkKAAAA"],
+["donotreply@dartford-crossing-charge.service.gov.uk","Payment Receipt","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPJOHjyAAAA"],
+["Abbie@rivervale.co.uk","GF69TWJ - Early Termination","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPJOHjtAAAA"],
+// Batch 2: Nov 16 - Oct 9 2020
+["Chloe.J.Stevens@outlook.com","","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPJOHjdAAAA"],
+["info@sjdaccountancy.com","Hang on to more of your money","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPJOHjVAAAA"],
+["Chloe.J.Stevens@outlook.com","Hoodie","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPJOHjNAAAA"],
+["donotreply@dartford-crossing-charge.service.gov.uk","Dart-Charge password reset","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPA_tPvAAAA"],
+["donotreply@dartford-crossing-charge.service.gov.uk","Dart-Charge password reset","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPA_tPuAAAA"],
+["donotreply@dartford-crossing-charge.service.gov.uk","Payment Receipt","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPA_tPtAAAA"],
+["donotreply@dartford-crossing-charge.service.gov.uk","Failed Credit Card Payment","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPA_tPrAAAA"],
+["donotreply@dartford-crossing-charge.service.gov.uk","Payment Receipt","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPA_tPqAAAA"],
+["gethinstevens@hotmail.com","","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPA_tPfAAAA"],
+["donotreply@dartford-crossing-charge.service.gov.uk","Payment Receipt","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPA_tPeAAAA"],
+["info@sjdaccountancy.com","Tired of reading work emails?","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPA_tPAAAAA"],
+["helen.finely@outlook.com","Fwd: Upcoming event reminder","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPA_tO0AAAA"],
+["Athena.Giddings@sjdaccountancy.com","RE: Corporation Tax","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPA_tOjAAAA"],
+["Sana.Dilawar@sjdaccountancy.com","Action required 2019-20 self-assessment","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPA_tOVAAAA"],
+["helen.finely@outlook.com","Fwd: Year 11 Triple Science","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPA_tN9AAAA"],
+["info@sjdaccountancy.com","Job Retention Scheme Update","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPA_tNNAAAA"],
+["sdr@trinity.croydon.sch.uk","Trinity School 16+ Exam Day","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPA_tNJAAAA"],
+["sdr@trinity.croydon.sch.uk","RE: Question about entrance exams","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPA_tNIAAAA"],
+["AmericanExpress@welcome.aexp.com","Card added to Google Pay","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPA_tNDAAAA"],
+["AmericanExpress@welcome.aexp.com","Card removed from Google Pay","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPA_tNBAAAA"],
+["helen.finely@outlook.com","FW: Lesson","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPA_tMpAAAA"],
+["Athena.Giddings@sjdaccountancy.com","RE: Corporation tax","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPA_tMTAAAA"],
+["Athena.Giddings@sjdaccountancy.com","RE: Corporation tax","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAPA_tMQAAAA"],
+["Athena.Giddings@sjdaccountancy.com","RE: Corporation tax","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAO_LQH8AAAA"],
+["Chloe.J.Stevens@outlook.com","Haloween 2020","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAO9Qv3dAAAA"],
+["helen.finely@outlook.com","Fwd: EWEL Autumn 2 Invoice","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAO9Qv3RAAAA"],
+["Chloe.J.Stevens@outlook.com","FW: Immigration Refugees Canada","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAO9QjuPAAAA"],
+["Athena.Giddings@sjdaccountancy.com","RE: Corporation tax","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAO9QjuEAAAA"],
+["sdr@trinity.croydon.sch.uk","Re: Question about entrance exams","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAO85dEdAAAA"],
+["sdr@trinity.croydon.sch.uk","Re: Question about entrance exams","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAO85dEaAAAA"],
+["sdr@trinity.croydon.sch.uk","Automatic reply: entrance exams","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAO7GKOTAAAA"],
+["mail@service.patientaccess.com","Important security update","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAO7GKOLAAAA"],
+["gethinstevens@hotmail.com","Reminder: Dulcea Du birthday","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAO7GKN2AAAA"],
+["helen.finely@outlook.com","Fwd: Year 11 Autumn Report","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAO68SQlAAAA"],
+["bestinvest@service.bestinvest.co.uk","Your update from Tilney CEO","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAO68SQjAAAA"],
+["gethinstevens@hotmail.com","Reminder: David Shroder birthday","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAO68SQRAAAA"],
+["annaliesehortonpilates@gmail.com","Re: Pilates intro session","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAO4Vp6QAAAA"],
+["info@sjdaccountancy.com","Please tell us how we are doing","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAO4Vp59AAAA"],
+["Athena.Giddings@sjdaccountancy.com","RE: Corporation tax","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAO3IAXpAAAA"],
+["helen.finely@outlook.com","Re: Two new pieces for chloe","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAO3IAXmAAAA"],
+["info@sjdaccountancy.com","How can we improve?","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAO3IAXQAAAA"],
+["Athena.Giddings@sjdaccountancy.com","RE: Corporation tax","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAO3IAXPAAAA"],
+["gethinstevens@hotmail.com","Reminder: Amanda Jemmett birthday","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAO3IAXIAAAA"],
+["gethinstevens@hotmail.com","Reminder: Urvee Ranade birthday","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAO3IAXHAAAA"],
+["Athena.Giddings@sjdaccountancy.com","Automatic reply: Corporation tax","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAO2StK3AAAA"],
+["helen.finely@outlook.com","Fwd: Update 11 October 2020","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAO1UVCIAAAA"],
+["no-reply@2checkout.com","Your order on www.movavi.com","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAO1UVB4AAAA"],
+["helen.finely@outlook.com","Fwd: GoCardless Reminder","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOzQdCGAAAA"],
+["Athena.Giddings@sjdaccountancy.com","RE: Corporation tax","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOzQdCBAAAA"],
+// Batch 3: Oct 9 - Jul 13 2020
+["Athena.Giddings@sjdaccountancy.com","Client feedback survey","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOzQdCAAAAA"],
+["sdr@trinity.croydon.sch.uk","RE: Question about entrance exams","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOzQdB0AAAA"],
+["Helen.finely@outlook.com","Fwd: Duke of Edinburgh Bronze Award","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOzQdBzAAAA"],
+["Helen.finely@outlook.com","Fwd: Duke of Edinburgh Bronze Expedition","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOzQdByAAAA"],
+["Helen.finely@outlook.com","Fwd: WisePay Data Security","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOzQdBuAAAA"],
+["sdr@trinity.croydon.sch.uk","RE: Question about entrance exams","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOzQdBqAAAA"],
+["annaliesehortonpilates@gmail.com","Re: Pilates intro session","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOzQdBoAAAA"],
+["Helen.finely@outlook.com","Fwd: WisePay","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOzQdBMAAAA"],
+["annaliesehortonpilates@gmail.com","Pilates intro session","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOySBrDAAAA"],
+["AmexNetwork@email.amexnetwork.com","Naked Wines offer","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOySBrBAAAA"],
+["Athena.Giddings@sjdaccountancy.com","RE: Corporation tax","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOySBrAAAAA"],
+["mail@service.patientaccess.com","Keeping your data safe","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOySBq6AAAA"],
+["gethinstevens@hotmail.com","Reminder: Philip Moralee birthday","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOySBq5AAAA"],
+["Helen.finely@outlook.com","Re: Spare places","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOySBqrAAAA"],
+["Athena.Giddings@sjdaccountancy.com","RE: Corporation tax","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOx-levAAAA"],
+["Athena.Giddings@sjdaccountancy.com","RE: Faster Solutions Aug 20 VAT","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOx-lelAAAA"],
+["ssword@newsteadwood.co.uk","Re: Advice to Self-Isolate","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOx-lejAAAA"],
+["Athena.Giddings@sjdaccountancy.com","RE: Corporation tax","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOtY6jZAAAA"],
+["Athena.Giddings@sjdaccountancy.com","Faster Solutions Aug 20 VAT Calc","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOtY6jOAAAA"],
+["Athena.Giddings@sjdaccountancy.com","RE: Corporation tax","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOtY6jLAAAA"],
+["Sana.Dilawar@sjdaccountancy.com","RE: Self-Assessment Tax Return","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOtY6inAAAA"],
+["AmexNetwork@email.amexnetwork.com","Naked Wines offer","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOtY6iXAAAA"],
+["Helen.finely@outlook.com","Bank repayment details","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOtY6iTAAAA"],
+["Sana.Dilawar@sjdaccountancy.com","RE: Self-Assessment Tax Return","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOtY6iEAAAA"],
+["Helen.finely@outlook.com","Re: Supporting you in learning from home","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOslPNOAAAA"],
+["19StevensC@newsteadwood.onmicrosoft.com","Fwd: Supporting you in learning","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOslPNNAAAA"],
+["ssword@newsteadwood.co.uk","Re: Advice to Self-Isolate","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOpIH_FAAAA"],
+["ssword@newsteadwood.co.uk","Advice to Self-Isolate","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOpIH96AAAA"],
+["Abbie@rivervale.co.uk","RE: GF69TWJ","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOpIH9ZAAAA"],
+["Abbie@rivervale.co.uk","GF69TWJ","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOpIH8yAAAA"],
+["Athena.Giddings@sjdaccountancy.com","RE: Corp Tax Payment Reminder","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOmxN98AAAA"],
+["Athena.Giddings@sjdaccountancy.com","Corporation Tax Payment Reminder","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOjomJ1AAAA"],
+["Athena.Giddings@sjdaccountancy.com","RE: Faster Solutions Corp tax","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOjomJOAAAA"],
+["Athena.Giddings@sjdaccountancy.com","RE: VAT Return Reminder","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOjomJMAAAA"],
+["Abbie@rivervale.co.uk","RE: ET","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOjomJIAAAA"],
+["Athena.Giddings@sjdaccountancy.com","VAT Return Reminder","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOakd_5AAAA"],
+["Athena.Giddings@sjdaccountancy.com","time to become more tax efficient","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOX1ybUAAAA"],
+["Athena.Giddings@sjdaccountancy.com","time to become more tax efficient","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOSxfiQAAAA"],
+["Athena.Giddings@sjdaccountancy.com","RE: Faster Solutions Corp tax","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAORQahZAAAA"],
+["Athena.Giddings@sjdaccountancy.com","Maximising your efficiencies","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOK4WIkAAAA"],
+["automailer@e-paycapita.com","Payment Authentication Receipt","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOHE-vaAAAA"],
+["elyaccountsreceivable@thorlabs.com","Thorlabs Ltd Invoice","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAODs5N5AAAA"],
+["sales.uk@thorlabs.com","Thorlabs Web Order","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOCoXRdAAAA"],
+["webmaster@thorlabs.com","New THORLABS Account","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOCoXRcAAAA"],
+["notifications@dhlparcel.co.uk","DHL Parcel UK on its way","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAOA5Oc8AAAA"],
+["info@thebikeproject.co.uk","Shipping confirmation order #5532","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAN-u-YmAAAA"],
+["info@thebikeproject.co.uk","Thanks for contacting The Bike Project","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAN-u-YQAAAA"],
+["ewanostrocht@newsteadwood.co.uk","NWS Year 7 Report","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAN5paZMAAAA"],
+// Batch 4: Jul 13 - Jan 1 2020
+["survey@tesla.com","How was your Mobile Service","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAN2dFlnAAAA"],
+["no-reply-service@tesla.com","Tesla Service Invoice","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAN0wr4VAAAA"],
+["thomas@scoutproductions.co.uk","RE: Voltaren Commercial","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAANz2ZtWAAAA"],
+["accounts@scoutproductions.co.uk","Voltaren Commercial PAID","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAANz2ZtTAAAA"],
+["luke@scoutproductions.co.uk","Voltaren Commercial Smuggler","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAANz2ZtPAAAA"],
+["ReadingAccountsSupport@sjdaccountancy.com","RE: Faster Solutions May 20 VAT","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAANy-8BCAAAA"],
+["TBassett@bwsgirls.org","Re: School work","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAANy-8A8AAAA"],
+["bob.neill.mp@parliament.uk","Automated response from Bob Neill MP","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAANvosDeAAAA"],
+["kdonnelly@newsteadwood.co.uk","UKMT","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAANsIMUaAAAA"],
+["kdonnelly@newsteadwood.co.uk","UKMT","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAANsIMUWAAAA"],
+["ReadingAccountsSupport@sjdaccountancy.com","Faster Solutions May 20 VAT Return","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAANo8RurAAAA"],
+["ewanostrocht@newsteadwood.co.uk","NWS Engagement with Learning","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAANnmo5KAAAA"],
+["uk_communications@tesla.com","Action Required Review Payment","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAANkeSpqAAAA"],
+["ReadingAccountsSupport@sjdaccountancy.com","RE: May VAT Reminder","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAANkeSpSAAAA"],
+["ReadingAccountsSupport@sjdaccountancy.com","May VAT Reminder","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAANiHw7hAAAA"],
+["athena.giddings@sjdaccountancy.com","VAT Return Reminder","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAANeplNuAAAA"],
+["support@getmygrades.co.uk","Re: Get My Grades subscription","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAANZ697mAAAA"],
+["bob.neill.mp@parliament.uk","RE: Letter from your constituent","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAANZ697gAAAA"],
+["bob.neill.mp@parliament.uk","Automated response from Bob Neill MP","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAANZNc7oAAAA"],
+["support@getmygrades.co.uk","Re: Get My Grades subscription","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAANQpbVCAAAA"],
+["AmericanExpress@email.americanexpress.com","COVID-19 welcome bonus extended","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAANQpbUUAAAA"],
+["AmericanExpress@welcome.aexp.com","Membership Rewards SafeKey redemption","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAANPQZdJAAAA"],
+["support@getmygrades.co.uk","Re: Get My Grades subscription","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAANO5UJPAAAA"],
+["installationsuk@tesla.com","Introducing Tesla Energy Plan","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAANEHJZHAAAA"],
+["AmericanExpress@email.americanexpress.com","COVID-19 important update","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAM_9ndNAAAA"],
+["athena.giddings@sjdaccountancy.com","P11D reminder 2019/20","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAM_9ncgAAAA"],
+["athena.giddings@sjdaccountancy.com","New spreadsheet YE December 2020","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAM24aA8AAAA"],
+["athena.giddings@sjdaccountancy.com","VAT Return Submission confirmation","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAM24aAPAAAA"],
+["athena.giddings@sjdaccountancy.com","RE: Faster Solutions Feb 20 VAT","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAM24aAGAAAA"],
+["athena.giddings@sjdaccountancy.com","Faster Solutions Feb 20 VAT","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAM24aAFAAAA"],
+["mailorder@charbonnel.co.uk","Charbonnel et Walker Shipment","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAM01ISYAAAA"],
+["athena.giddings@sjdaccountancy.com","RE: Spreadsheets for VAT","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAM01IR4AAAA"],
+["mailorder@charbonnel.co.uk","Charbonnel et Walker New Order","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMxmCYiAAAA"],
+["do-not-reply@wmboyle.co.uk","Wm Boyle Interior Finishes order","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMrv7dZAAAA"],
+["sharon@cannonsuk.com","VAT INVOICE","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMrv7dQAAAA"],
+["lairdstevens@hotmail.com","RE: the flu scare","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMrv7c8AAAA"],
+["lairdstevens@hotmail.com","the flu scare","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMrv7clAAAA"],
+["athena.giddings@sjdaccountancy.com","RE: Urgent Action Salary Recommendation","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMrv7cYAAAA"],
+["athena.giddings@sjdaccountancy.com","RE: VAT","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMrv7cWAAAA"],
+["athena.giddings@sjdaccountancy.com","Urgent Action Salary Recommendation","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMrv7brAAAA"],
+["AmericanExpress@welcome.aexp.com","Card added to Google Pay","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMmBvw7AAAA"],
+["homecharge@chargedev.co.uk","Payment","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMrv7cXAAAA"],
+["athena.giddings@sjdaccountancy.com","Urgent 2020/21 Salary Advice","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMmBvwQAAAA"],
+["no-reply@ruudrascottplastics.com","Order Information","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMmBvvYAAAA"],
+["athena.giddings@sjdaccountancy.com","2020/21 Salary Advice","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMlE0bJAAAA"],
+["lairdstevens@hotmail.com","RE: feeling sorry for self","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMhrwvWAAAA"],
+["lairdstevens@hotmail.com","feeling sorry for self","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMhrwvPAAAA"],
+["athena.giddings@sjdaccountancy.com","SJD Accountancy VAT Return Reminder","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMhrwvKAAAA"],
+["echosign@echosign.com","Completed: OLC Extension Schedule","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMdn4-WAAAA"],
+["homecharge@chargedev.co.uk","Payment","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMfvgqlAAAA"],
+["olevgrants@chargedev.co.uk","Re: OLEV Grant Claim Information","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMdn4-NAAAA"],
+["Athena.Giddings@sjdaccountancy.com","Year End Tax Planning 2019/20","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMdn4-KAAAA"],
+["homecharge@chargedev.co.uk","Electrical Installation Certificate","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMfvgqkAAAA"],
+["Abbie@rivervale.co.uk","RE: ET","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMZ-5-6AAAA"],
+["echosign@echosign.com","Completed: Self-bill Agreement","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMYkslmAAAA"],
+["Lisa.Amos@uk.bp.com","Transitioning to BP: Request for CV","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMYksleAAAA"],
+["lairdstevens@hotmail.com","Happy Birthday to You!","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMWcng5AAAA"],
+["Abbie@rivervale.co.uk","ET","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMWG2UqAAAA"],
+["olevgrants@chargedev.co.uk","OLEV Grant Claim Information","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMbU5RoAAAA"],
+["lairdstevens@hotmail.com","mid-birthday stuff","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMUx02nAAAA"],
+["AmericanExpress@welcome.aexp.com","Card application approved","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMUx02ZAAAA"],
+["do-not-reply@wmboyle.co.uk","Wm Boyle order receipt Feb 9","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMR03urAAAA"],
+["lairdstevens@hotmail.com","Re: Happy Birthday!","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMR03umAAAA"],
+["Athena.Giddings@sjdaccountancy.com","2nd Year End Accounts Reminder","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMR03uhAAAA"],
+["Athena.Giddings@sjdaccountancy.com","RE: Faster Solutions Nov 19 VAT","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMMoqXtAAAA"],
+["Molly.Green@sjdaccountancy.com","Invoice from SJD","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMMoqXjAAAA"],
+["ops@chargedev.co.uk","Re: Installation Requirements ChargedEV","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMMoqXiAAAA"],
+["kadams@teksystems.com","BP IR35 PAYE Breakdown","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMMoqXaAAAA"],
+["ops@chargedev.co.uk","Installation Requirements ChargedEV","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMKgH9HAAAA"],
+["uk_communications@tesla.com","Tesla Winter Experience","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMKgH9GAAAA"],
+["tiffany.cantrell@sjdaccountancy.com","RE: Self-Assessment Tax Return","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMHbWL2AAAA"],
+["tiffany.cantrell@sjdaccountancy.com","RE: Self-Assessment Tax Return","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMHbWLnAAAA"],
+["tiffany.cantrell@sjdaccountancy.com","URGENT ACTION: Self-Assessment approval","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAMBqPxcAAAA"],
+["tiffany.cantrell@sjdaccountancy.com","ACTION: Self-Assessment approval","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAL-WjLcAAAA"],
+["Athena.Giddings@sjdaccountancy.com","Year End Accounts Reminder","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAL8kaacAAAA"],
+["Athena.Giddings@sjdaccountancy.com","RE: Faster Solutions Nov 19 VAT","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAL8kaaMAAAA"],
+["Athena.Giddings@sjdaccountancy.com","Faster Solutions Nov 19 VAT Return","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAL8kaaAAAAA"],
+["Athena.Giddings@sjdaccountancy.com","RE: VAT Information Request","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAL8kaZ8AAAA"],
+["Athena.Giddings@sjdaccountancy.com","RE: VAT Information Request","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAL7q0oSAAAA"],
+["Athena.Giddings@sjdaccountancy.com","RE: VAT Information Request","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAL7q0oRAAAA"],
+["yourdelivery@dpd.co.uk","Pawel Ochynski CSG order delivered today","AQMkADAwATE2ZTEwLWY3YjMtOGRmNi0wMAItMDAKAEYAAAPPJ7SKtx1EQJdKi55GiF6LBwAQXW7C79esR7sta8m85yFqAAACAQwAAAAQXW7C79esR7sta8m85yFqAAL7q0oMAAAA"],
+];
+
+// Classify
+let keepIds=[], trashIds=[], unmatchedIds=[];
+let keepCount=0, trashCount=0, unmatchedCount=0;
+for (const [from, subj, id] of emails) {
+  if (matchDomain(from, keep)) { keepIds.push(id); keepCount++; }
+  else if (matchDomain(from, trash)) { trashIds.push(id); trashCount++; }
+  else if (matchSubjectTrash(subj)) { trashIds.push(id); trashCount++; }
+  else { unmatchedIds.push(id); unmatchedCount++; }
+}
+
+console.log("Total emails:", emails.length);
+console.log("KEEP:", keepCount);
+console.log("TRASH:", trashCount);
+console.log("UNMATCHED:", unmatchedCount);
+
+// Show trash details
+console.log("\n---TRASH EMAILS---");
+for (const [from, subj, id] of emails) {
+  if (trashIds.includes(id)) console.log(from + " | " + subj);
+}
+
+console.log("\n---UNMATCHED EMAILS---");
+for (const [from, subj, id] of emails) {
+  if (unmatchedIds.includes(id)) console.log(from + " | " + subj);
+}
+
+// Write trash IDs to file for batch processing
+const fs = require("fs");
+fs.writeFileSync("C:/Users/gethi/source/email-manager/outlook-mcp/trash2020.json", JSON.stringify(trashIds));
