@@ -80,6 +80,35 @@ Follow the `@gongrzhe/server-gmail-autoauth-mcp` package instructions to produce
 On first run the `whatsapp-manager` server prints a QR code to authenticate; session keys
 are stored in `whatsapp-mcp/auth-store/` (gitignored — never commit these).
 
+## Always-on processing
+
+The manager can run itself on a schedule and process mail as it arrives, sending you a
+short digest over WhatsApp. It polls every ~15 minutes (near-real-time) and runs a
+**conservative, unattended** workflow that never deletes mail. Full spec:
+[`autonomous-processing.md`](autonomous-processing.md).
+
+Because your OAuth tokens and MCP servers live on your machine, the scheduler runs there too:
+
+- **Windows:** register the Task Scheduler job (runs every 15 min while you're logged in):
+
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File scripts\register-task-windows.ps1
+  ```
+
+  Remove it with `Unregister-ScheduledTask -TaskName "EmailManager-Autonomous" -Confirm:$false`.
+
+- **macOS/Linux:** add a cron entry:
+
+  ```cron
+  */15 * * * * /path/to/email-manager/scripts/autonomous-run.sh >> /path/to/email-manager/autonomous.log 2>&1
+  ```
+
+Prerequisites: the Claude Code CLI on `PATH`, `.mcp.json` configured, and Gmail/Outlook/WhatsApp
+each authenticated once interactively. The WhatsApp digest goes to your own *Message Yourself*
+chat by default (no phone number is stored). Runs only while your machine is on — for true
+24/7 you'd host the MCP servers on an always-on box. See the scheduler-script comments for how
+tool permissions are handled in headless runs.
+
 ## Security notes
 
 - `.env`, `.mcp.json`, `whatsapp-mcp/auth-store/`, `state.json`, and the Outlook data dumps
