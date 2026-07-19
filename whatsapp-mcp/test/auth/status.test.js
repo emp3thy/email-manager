@@ -1,7 +1,7 @@
 const handleAuthStatus = require('../../auth/status');
 
 jest.mock('../../connection', () => ({
-  getStatus: jest.fn().mockReturnValue({ authenticated: false, state: 'disconnected' }),
+  verifyStatus: jest.fn().mockResolvedValue({ authenticated: false, state: 'no-credentials' }),
 }));
 
 describe('auth-status handler', () => {
