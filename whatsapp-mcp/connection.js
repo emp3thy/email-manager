@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const { AUTH_STORE_PATH } = require('./config');
 
@@ -40,6 +42,19 @@ async function createConnection({ onQR } = {}) {
 
   sock.ev.on('creds.update', saveCreds);
 
+  // Persistent state tracking: the promise handler below unsubscribes once the
+  // connection opens, so without this a later close would leave connectionState
+  // stuck at 'open' with a dead socket.
+  const mySock = sock;
+  sock.ev.on('connection.update', ({ connection }) => {
+    if (connection === 'open' && sock === mySock) {
+      connectionState = 'open';
+    } else if (connection === 'close' && sock === mySock) {
+      connectionState = 'disconnected';
+      sock = null;
+    }
+  });
+
   // Collect messages from history sync into the in-memory store
   sock.ev.on('messaging-history.set', ({ messages } = {}) => {
     for (const msg of (messages || [])) {
@@ -69,18 +84,14 @@ async function createConnection({ onQR } = {}) {
       }
 
       if (connection === 'open') {
-        connectionState = 'open';
-        sock.ev.off('connection.update', onUpdate);
+        mySock.ev.off('connection.update', onUpdate);
         console.error('WhatsApp connection established');
-        resolve(sock);
+        resolve(mySock);
       }
 
       if (connection === 'close') {
         const statusCode = lastDisconnect?.error?.output?.statusCode;
-        connectionState = 'disconnected';
-        const ev = sock.ev;
-        sock = null;
-        ev.off('connection.update', onUpdate);
+        mySock.ev.off('connection.update', onUpdate);
 
         if (statusCode === DisconnectReason.loggedOut) {
           reject(new Error('Logged out. Please re-authenticate.'));
@@ -90,7 +101,7 @@ async function createConnection({ onQR } = {}) {
       }
     };
 
-    sock.ev.on('connection.update', onUpdate);
+    mySock.ev.on('connection.update', onUpdate);
     connectionState = 'connecting';
   });
 }
@@ -111,6 +122,44 @@ function getStatus() {
   };
 }
 
+// True when a previously paired session exists on disk (creds.json with an
+// account id). Says nothing about whether the socket is currently connected.
+function hasSavedCredentials() {
+  try {
+    const creds = JSON.parse(fs.readFileSync(path.join(AUTH_STORE_PATH, 'creds.json'), 'utf8'));
+    return !!(creds && creds.me && creds.me.id);
+  } catch {
+    return false;
+  }
+}
+
+// Verified status for unattended callers: the in-process state starts
+// 'disconnected' even when valid credentials exist, so attempt a real
+// connection (bounded by timeoutMs) before reporting. Never triggers a QR
+// wait — if no saved credentials exist it reports without connecting.
+async function verifyStatus({ timeoutMs = 30000 } = {}) {
+  if (sock && connectionState === 'open') {
+    return getStatus();
+  }
+  if (!hasSavedCredentials()) {
+    return { authenticated: false, state: 'no-credentials' };
+  }
+  let timer;
+  try {
+    await Promise.race([
+      getConnection(),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`connection not open within ${timeoutMs}ms`)), timeoutMs);
+      }),
+    ]);
+    return getStatus();
+  } catch (err) {
+    return { ...getStatus(), error: err.message };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function disconnect() {
   if (sock) {
     sock.end();
@@ -119,4 +168,4 @@ function disconnect() {
   connectionState = 'disconnected';
 }
 
-module.exports = { getConnection, getStatus, disconnect, createConnection, getMessageStore };
+module.exports = { getConnection, getStatus, verifyStatus, hasSavedCredentials, disconnect, createConnection, getMessageStore };

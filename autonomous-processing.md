@@ -50,8 +50,11 @@ Run these checks before touching any mail. If a check fails, send a WhatsApp ale
    - Outlook: call `mcp__outlook-manager__check-auth-status`. If not authenticated, skip
      Outlook this run and note it in the digest. **Never** launch the interactive browser
      auth flow in an unattended run.
-   - WhatsApp (for the digest): call `whatsapp-auth-status`. If not authenticated, fall back
-     to writing the digest to `last-run-summary.md` only, and note that WhatsApp was skipped.
+   - WhatsApp (for the digest): call `whatsapp-auth-status`. It verifies by actually
+     connecting when saved credentials exist (may take up to ~30s), so trust its answer.
+     Only if it reports not authenticated (`no-credentials`, or an error after the
+     connection attempt), fall back to writing the digest to `last-run-summary.md` only,
+     and note that WhatsApp was skipped.
 
 ---
 

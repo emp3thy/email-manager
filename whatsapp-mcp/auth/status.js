@@ -1,7 +1,7 @@
-const { getStatus } = require('../connection');
+const { verifyStatus } = require('../connection');
 
 async function handleAuthStatus() {
-  const status = getStatus();
+  const status = await verifyStatus();
   return {
     content: [{
       type: 'text',
