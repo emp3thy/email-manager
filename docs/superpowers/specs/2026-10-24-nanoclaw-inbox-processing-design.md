@@ -7,7 +7,7 @@
 
 Move the always-on email processing from a Windows scheduler running Claude
 Code headlessly (see `autonomous-processing.md`) to a deterministic Python
-runner executed every 15 minutes inside the owner's NanoClaw agent, "Dr Claw",
+runner executed once an hour inside the owner's NanoClaw agent, "Dr Claw",
 with a Slack digest only when there is something to say. The classification
 rules (`rules.yaml`), the conservative autonomous policy and the per-account
 run state keep their shape. What changes is that code, not a model, does the
@@ -25,7 +25,7 @@ DM.
 
 ## Goals
 
-- Every 15 minutes, new mail in both accounts is classified by `rules.yaml`
+- Every hour, new mail in both accounts is classified by `rules.yaml`
   and only safe actions are applied: label, archive, mark read, hold. Nothing
   is deleted or moved to Deleted Items, ever, by this runner.
 - The owner gets a Slack digest only when a run found important mail, held
@@ -139,7 +139,7 @@ DM.
 
 ### 2. What one run does
 
-Inputs: `rules.yaml`, `state.json`, flags. Defaults: `--max 40`,
+Inputs: `rules.yaml`, `state.json`, flags. Defaults: `--max 80`,
 `--budget-seconds 20`, accounts from `state.autonomous.accounts` (default
 both), backlog `settings.autonomous.backlog_days` (default 7) used only when an
 account has no `last_run`.
@@ -268,10 +268,10 @@ only. The container sees none of them.
   readonly: false}` (written through `scripts/q.ts` as before), then `ncl
   groups restart`.
 - Recurring task `inbox-processing` on Dr Claw's group, recurrence
-  `*/15 * * * *`, with `--script`:
+  `0 * * * *`, with `--script`:
 
   ```bash
-  bash /workspace/extra/email-manager/scripts/run.sh --gate --max 40 --budget-seconds 20
+  bash /workspace/extra/email-manager/scripts/run.sh --gate --max 80 --budget-seconds 20
   ```
 
   The wrapper's last stdout line is the runner's JSON line (the wrapper
@@ -323,7 +323,7 @@ only. The container sees none of them.
 | `rules.yaml` unparsable | As a crash; no account touched. |
 | Rate limits (Gmail 429, Graph 429) | Honour `Retry-After` once within the budget, otherwise count as an error for that message and continue. |
 | Clock or window oddities | Windows are computed from message timestamps returned by the provider, never from local assumptions; `last_run` never moves backwards. |
-| Ubuntu or nanoclaw down | Nothing runs; on recovery the window spans the gap and drains at 40 per fire. |
+| Ubuntu or nanoclaw down | Nothing runs; on recovery the window spans the gap and drains at 80 per fire. |
 
 ### 6. Testing
 
@@ -346,7 +346,7 @@ only. The container sees none of them.
   persisted atomically; create-then-update decision for the OneCLI secret
   (subprocess mocked); non-zero exit and no file change on failure.
 - **Live, in order**: `run.sh --dry-run --max 1000` against both accounts,
-  reviewed; the backlog sweep via a one-off task; one observed 15-minute
+  reviewed; the backlog sweep via a one-off task; one observed hourly
   fire; then an induced Outlook failure (rename `outlook-token.json`, wait
   for the next refresh to fail and the next fire to report once), restore,
   confirm recovery and that the error is not repeated within six hours.
@@ -385,9 +385,9 @@ wrong.
   stores whatever token the response carries, which is correct either way.
 - A browser on Windows reaches `127.0.0.1:3333` inside WSL for the one-time
   authorize callback. **Measured** today for 8099 and 10254 (same mechanism).
-- The runner finishes a 40-message batch inside 20 s through the proxy.
-  **Unverified**; label and move calls are single round-trips, so 40 messages
-  is roughly 80–120 calls. If wrong: lower `--max`; the carry-over makes any
+- The runner finishes an 80-message batch inside 20 s through the proxy.
+  **Unverified**; label and move calls are single round-trips, so 80 messages
+  is roughly 160–240 calls. If wrong: lower `--max`; the carry-over makes any
   cap correct, only slower to drain.
 - Gmail's `q=after:<unix>` and Graph's `receivedDateTime ge` honour the
   timestamps the runner stores. **Verified** by API documentation; both
