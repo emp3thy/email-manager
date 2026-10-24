@@ -43,3 +43,7 @@ outlook-mcp/~/
 # --- stray debug / credential artifacts ---
 trace_auth.js
 whatsapp-mcp/*.png
+
+# --- python runner / relay ---
+.venv*/
+data/
