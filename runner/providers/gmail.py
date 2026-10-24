@@ -8,19 +8,11 @@ from typing import Callable
 import httpx
 
 from ..models import Message
+from ..rules import LABELS
 from .base import Op, request_with_retry
 
 BASE = "https://gmail.googleapis.com/gmail/v1/users/me"
-EM_LABELS = (
-    "em/important",
-    "em/newsletters",
-    "em/notifications",
-    "em/promotions",
-    "em/receipts",
-    "em/spam",
-    "em/held",
-    "em/review",
-)
+EM_LABELS = LABELS
 PAGE_SIZE = 100
 BASE_HEADERS = ("From", "Subject", "Date")
 
@@ -38,6 +30,7 @@ class GmailProvider:
         self.header_names = [h for h in header_names if h and h not in BASE_HEADERS]
         self.sleep = sleep
         self._labels: dict[str, str] | None = None  # name -> id
+        self.truncated = False  # set by list_since: more candidates existed than `limit`
 
     # --- labels -------------------------------------------------------------------
 
@@ -66,13 +59,20 @@ class GmailProvider:
     # --- listing --------------------------------------------------------------------
 
     def list_since(self, start: datetime, limit: int) -> list[Message]:
+        """Oldest `limit` unprocessed inbox messages in the window.
+
+        Gmail lists newest first, so every id in the window is collected (ids are
+        cheap, 100 per call) and the cap is applied after sorting oldest-first;
+        taking the first `limit` ids as listed would keep the newest and let
+        `last_run` jump past the oldest forever.
+        """
         labels = self._label_map()
         em_ids = {lid for name, lid in labels.items() if name.startswith("em/")}
         query = f"after:{int(start.timestamp())} in:inbox"
         ids: list[str] = []
         seen: set[str] = set()
         token: str | None = None
-        while len(ids) < limit:
+        while True:
             params: dict[str, str | int] = {"q": query, "maxResults": PAGE_SIZE}
             if token:
                 params["pageToken"] = token
@@ -106,6 +106,7 @@ class GmailProvider:
                 )
             )
         out.sort(key=lambda m: m.received)
+        self.truncated = len(out) > limit
         return out[:limit]
 
     # --- actions --------------------------------------------------------------------
@@ -113,7 +114,10 @@ class GmailProvider:
     def apply(self, message_id: str, op: Op) -> None:
         kind, arg = op
         if kind == "add_label":
-            body = {"addLabelIds": [self._label_map()[arg]]}
+            label_id = self._label_map().get(arg)
+            if not label_id:
+                raise ValueError(f"unknown Gmail label {arg!r}")
+            body = {"addLabelIds": [label_id]}
         elif kind == "remove_from_inbox":
             body = {"removeLabelIds": ["INBOX"]}
         else:

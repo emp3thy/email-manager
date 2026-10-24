@@ -34,6 +34,7 @@ class GraphProvider:
         self.client = client or httpx.Client(timeout=30.0)
         self.sleep = sleep
         self._folders: dict[str, str] | None = None  # displayName -> id
+        self.truncated = False  # set by list_since: more candidates existed than `limit`
 
     def _req(self, method: str, url: str, **kw) -> httpx.Response:
         return request_with_retry(self.client, method, url, sleep=self.sleep, **kw)
@@ -69,6 +70,7 @@ class GraphProvider:
         out: list[Message] = []
         seen: set[str] = set()
         first = True
+        self.truncated = False
         while url and len(out) < limit:
             page = self._req("GET", url, params=params if first else None).json()
             first = False
@@ -77,6 +79,9 @@ class GraphProvider:
                 mid = item["id"]
                 if mid in seen:
                     continue
+                if len(out) >= limit:
+                    self.truncated = True  # a new message remains beyond the cap
+                    break
                 seen.add(mid)
                 added += 1
                 ea = (item.get("from") or {}).get("emailAddress") or {}
@@ -92,9 +97,9 @@ class GraphProvider:
                         headers=None,
                     )
                 )
-                if len(out) >= limit:
-                    break
             url = page.get("@odata.nextLink")
+            if len(out) >= limit and url:
+                self.truncated = True  # the server reports more pages beyond the cap
             if added == 0:
                 break  # a page that adds nothing new is a paging fault; never follow it again
         out.sort(key=lambda m: m.received)

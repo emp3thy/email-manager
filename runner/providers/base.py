@@ -57,6 +57,19 @@ def _auth_error_from(resp: httpx.Response) -> AuthError:
     return AuthError(f"{resp.request.method} {resp.request.url.host}: HTTP {resp.status_code} {detail}", connect_url)
 
 
+def _is_rate_limit_403(resp: httpx.Response) -> bool:
+    """Gmail signals quota exhaustion with 403 + reason *RateLimitExceeded; that is retryable, not auth."""
+    try:
+        body = resp.json()
+    except ValueError:
+        return False
+    err = body.get("error") if isinstance(body, dict) else None
+    if not isinstance(err, dict):
+        return False
+    reasons = {e.get("reason", "") for e in err.get("errors", []) if isinstance(e, dict)}
+    return any(r in ("rateLimitExceeded", "userRateLimitExceeded") for r in reasons)
+
+
 def request_with_retry(
     client: httpx.Client,
     method: str,
@@ -75,9 +88,9 @@ def request_with_retry(
             attempt += 1
             sleep(DEFAULT_RETRY_AFTER)
             continue
-        if resp.status_code in (401, 403):
+        if resp.status_code in (401, 403) and not _is_rate_limit_403(resp):
             raise _auth_error_from(resp)
-        if resp.status_code in RETRYABLE:
+        if resp.status_code in RETRYABLE or (resp.status_code == 403 and _is_rate_limit_403(resp)):
             if attempt >= MAX_RETRIES:
                 raise TransientError(f"{method} {url}: HTTP {resp.status_code} after {attempt} retries")
             attempt += 1

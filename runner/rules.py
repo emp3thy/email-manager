@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import fnmatch
 from dataclasses import dataclass
+from email.utils import parseaddr
 from pathlib import Path
 
 import yaml
@@ -16,6 +17,19 @@ from .models import Message
 
 ACTIONS = ("keep", "archive", "trash", "calendar_event")
 FIELDS = ("sender", "subject", "header")
+# Every label the runner knows how to apply. Gmail creates these as labels; Outlook has a
+# folder only for the first five (`em/x` -> `em-x`), so an `archive` rule must use one of those.
+LABELS = (
+    "em/important",
+    "em/newsletters",
+    "em/notifications",
+    "em/promotions",
+    "em/receipts",
+    "em/spam",
+    "em/held",
+    "em/review",
+)
+ARCHIVABLE_LABELS = LABELS[:5]
 
 
 class RulesError(ValueError):
@@ -57,6 +71,10 @@ def load_rules(path: Path) -> list[Rule]:
         header_name = raw.get("header_name")
         if raw["match_field"] == "header" and not header_name:
             raise RulesError(f"{path}: rule #{i + 1} is a header rule without 'header_name'")
+        if str(raw["label"]) not in LABELS:
+            raise RulesError(f"{path}: rule #{i + 1} has unknown label {raw['label']!r} (known: {', '.join(LABELS)})")
+        if raw["action"] == "archive" and str(raw["label"]) not in ARCHIVABLE_LABELS:
+            raise RulesError(f"{path}: rule #{i + 1} archives to {raw['label']!r}, which has no Outlook folder")
         rules.append(
             Rule(
                 pattern=str(raw["pattern"]),
@@ -70,16 +88,26 @@ def load_rules(path: Path) -> list[Rule]:
     return rules
 
 
+def _sender_matches(pattern: str, message: Message) -> bool:
+    """Match the address; fall back to the raw From text only when no address parses.
+
+    Display-name text must never satisfy a sender rule: '"alerts@bank.example"
+    <phish@evil.example>' is not from bank.example.
+    """
+    _, parsed = parseaddr(message.sender or "")
+    if parsed:
+        return glob_match(pattern, message.sender_address())
+    return glob_match(pattern, message.sender)
+
+
 def _matches(message: Message, rule: Rule) -> bool:
     if rule.match_field == "sender":
-        return glob_match(rule.pattern, message.sender_address()) or glob_match(rule.pattern, message.sender)
+        return _sender_matches(rule.pattern, message)
     if rule.match_field == "subject":
         if not glob_match(rule.pattern, message.subject):
             return False
         if rule.sender_pattern:
-            return glob_match(rule.sender_pattern, message.sender_address()) or glob_match(
-                rule.sender_pattern, message.sender
-            )
+            return _sender_matches(rule.sender_pattern, message)
         return True
     if rule.match_field == "header":
         if not message.headers or not rule.header_name:

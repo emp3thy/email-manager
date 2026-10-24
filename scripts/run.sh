@@ -26,6 +26,14 @@ if ! mkdir -p "$PROJECT_ROOT/data" 2>/dev/null || ! { : >> "$LOG"; } 2>/dev/null
   exit 1
 fi
 
+# One run at a time: two overlapping runs would both act on the same window and
+# the later one could write an older last_run. Exit 75 (EX_TEMPFAIL) if busy.
+exec 9>"$PROJECT_ROOT/data/.run.lock"
+if ! flock -n 9; then
+  echo "another run is in progress; not starting a second one" >&2
+  exit 75
+fi
+
 # Behind the NanoClaw/OneCLI proxy every HTTPS connection is re-signed with the
 # gateway's CA. httpx reads SSL_CERT_FILE; requests and pip do not, so point
 # them at the same bundle.

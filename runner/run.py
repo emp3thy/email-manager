@@ -124,10 +124,20 @@ def run(
             rule = match(message, rules)
             decision = decide(rule, account)
             ok = True
+            auth_lost = False
             if not cfg.dry_run:
                 for op in decision.ops:
                     try:
                         provider.apply(message.id, op)
+                    except AuthError as exc:
+                        summary.auth[account] = "not_connected" if exc.connect_url else "unauthorized"
+                        if exc.connect_url:
+                            summary.connect_urls[account] = exc.connect_url
+                        log.error("%s: authentication lost mid-run: %s", account, exc)
+                        ok = False
+                        clean = False
+                        auth_lost = True
+                        break
                     except (TransientError, httpx.HTTPError, ValueError) as exc:
                         summary.errors.append(f"{account}: {op[0]} {message.id}: {exc}")
                         stats.errors += 1
@@ -135,6 +145,8 @@ def run(
                         clean = False
                         log.error("%s: %s on %s failed: %s", account, op[0], message.id, exc)
                         break
+            if auth_lost:
+                break  # the rest of this account cannot be processed this run
             if not ok:
                 continue
             stats.processed += 1
@@ -146,11 +158,13 @@ def run(
                 summary.calendar_review += 1
             if decision.important:
                 summary.important.append({"account": account, "from": message.sender_display(), "subject": message.subject})
-            if not cfg.dry_run:
+            # Advance only while every earlier message in this window succeeded: once an
+            # op has failed, last_run freezes before that message so the next run retries it.
+            if not cfg.dry_run and clean:
                 state.advance(account, message.received)
         else:
-            # loop finished without a budget break
-            if len(messages) >= cfg.max_messages:
+            # loop finished without a budget break or auth loss
+            if getattr(provider, "truncated", False):
                 stats.capped = True
                 clean = False
         if not cfg.dry_run and clean and not stats.capped:

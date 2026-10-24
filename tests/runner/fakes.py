@@ -25,6 +25,8 @@ class FakeProvider:
         self.applied: list[tuple[str, Op]] = []
         self.list_calls: list[tuple[datetime, int]] = []
         self.ensure_calls = 0
+        self.truncated = False
+        self.force_truncated = False
 
     def ensure_labels(self) -> None:
         self.ensure_calls += 1
@@ -35,7 +37,9 @@ class FakeProvider:
         self.list_calls.append((start, limit))
         if self.auth_error:
             raise self.auth_error
-        return [m for m in self.messages if m.received > start][:limit]
+        window = sorted((m for m in self.messages if m.received > start), key=lambda m: m.received)
+        self.truncated = self.force_truncated or len(window) > limit
+        return window[:limit]
 
     def apply(self, message_id: str, op: Op) -> None:
         if self.delay:

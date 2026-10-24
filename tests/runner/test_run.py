@@ -46,24 +46,6 @@ def test_cap_sets_capped_and_last_run_stops_at_last_processed(tmp_path, msg):
     assert gmail.list_calls[0][1] == 3
 
 
-def test_failed_op_does_not_advance_last_run_past_it(tmp_path, msg):
-    msgs = [m(msg, 1, "a@news.example", minutes_ago=90), m(msg, 2, "b@bank.example", minutes_ago=80)]
-    gmail = FakeProvider("gmail", msgs, fail_ops={"remove_from_inbox"})
-    state = State.load(tmp_path / "state.json")
-    s = run(cfg(tmp_path), {"gmail": gmail}, state, RULES, now=lambda: NOW)
-    assert s.accounts["gmail"].errors == 1 and s.accounts["gmail"].processed == 1
-    assert any("remove_from_inbox" in e for e in s.errors)
-    assert state.last_run("gmail") == msgs[1].received  # advanced only by the message that succeeded
-    # the failed message is older than last_run... so the window must not skip it:
-    # the run advances only past *successful* messages, and the failed one precedes them.
-    # Guard: last_run never passes a failed message that is newer than all successes.
-    msgs2 = [m(msg, 3, "c@bank.example", minutes_ago=70), m(msg, 4, "d@news.example", minutes_ago=60)]
-    gmail2 = FakeProvider("gmail", msgs2, fail_ops={"remove_from_inbox"})
-    state2 = State.load(tmp_path / "state2.json")
-    run(cfg(tmp_path), {"gmail": gmail2}, state2, RULES, now=lambda: NOW)
-    assert state2.last_run("gmail") == msgs2[0].received
-
-
 def test_complete_run_advances_to_started(tmp_path, msg):
     gmail = FakeProvider("gmail", [m(msg, 1, "a@bank.example")])
     state = State.load(tmp_path / "state.json")

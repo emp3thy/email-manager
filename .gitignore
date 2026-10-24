@@ -47,3 +47,5 @@ whatsapp-mcp/*.png
 # --- python runner / relay ---
 .venv*/
 data/
+__pycache__/
+*.pyc
