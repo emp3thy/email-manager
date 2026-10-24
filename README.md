@@ -109,6 +109,36 @@ chat by default (no phone number is stored). Runs only while your machine is on 
 24/7 you'd host the MCP servers on an always-on box. See the scheduler-script comments for how
 tool permissions are handled in headless runs.
 
+## Running under NanoClaw
+
+The current always-on setup does not use the scheduler, the MCP servers or the WhatsApp
+digest described above. Instead a deterministic Python runner (`runner/`) executes inside
+the owner's [NanoClaw](https://github.com/nanocoai/nanoclaw) agent, and the agent posts a
+Slack digest only when there is something to report. The design is in
+`docs/superpowers/specs/2026-10-24-nanoclaw-inbox-processing-design.md`.
+
+- **When:** a NanoClaw task fires at 07:00, 12:00, 17:00 and 22:00 (Europe/London) and
+  runs `scripts/run.sh`, which owns a venv in `.venv`, appends to `data/runner.log`, and
+  prints the runner's last two lines: `DIGEST: data/last-digest.txt` and
+  `VERDICT: REPORT` or `VERDICT: QUIET`. On `REPORT` the agent relays `data/last-digest.txt`
+  to Slack verbatim; on `QUIET` it says nothing.
+- **What it does:** applies `rules.yaml` to mail received since each account's `last_run`
+  (seven days back on the very first run), with the conservative policy from
+  `autonomous-processing.md`: label, archive, mark read, hold. It never deletes mail or
+  moves it to Deleted Items, and never writes `rules.yaml`.
+- **Credentials:** none in this repository or the container. Gmail is a OneCLI connection
+  injected by the credential proxy. Outlook uses `relay/`, run on the Ubuntu host by a
+  systemd timer every 30 minutes: it refreshes a Microsoft token from
+  `~/.config/email-manager/outlook-token.json` using the client in
+  `~/.config/email-manager/relay.env`, and writes the access token into a OneCLI custom
+  secret for `graph.microsoft.com`.
+- **Re-authorising Outlook:** `python -m relay authorize` on the host opens a Microsoft
+  sign-in (callback on `localhost:3333`), then `python -m relay refresh` pushes the token.
+  `python -m relay status` shows the state without printing secrets.
+- **Dry run:** `scripts/run.sh --dry-run --max 2000` reports what would happen and changes
+  nothing, not even `state.json`.
+- **Tests:** `pip install -r requirements-dev.txt && python -m pytest tests -q`.
+
 ## Security notes
 
 - `.env`, `.mcp.json`, `whatsapp-mcp/auth-store/`, `state.json`, and the Outlook data dumps

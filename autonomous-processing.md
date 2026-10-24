@@ -1,5 +1,10 @@
 # Autonomous (Always-On) Email Processing
 
+> **Note (2026-10-24):** on this install the scheduler, MCP tools and WhatsApp digest described
+> below are superseded by the `runner/` package executed under NanoClaw, with a Slack digest.
+> The guardrails, action-mapping tables and state shape here remain the policy the runner
+> implements. See `README.md` → "Running under NanoClaw".
+
 This document defines how the email manager processes new mail **unattended**, on a
 schedule, with **no human present to confirm actions**. It is the always-on counterpart
 to the interactive `clean-inbox` workflow.
