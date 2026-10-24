@@ -7,8 +7,9 @@
 
 Move the always-on email processing from a Windows scheduler running Claude
 Code headlessly (see `autonomous-processing.md`) to a deterministic Python
-runner executed once an hour inside the owner's NanoClaw agent, "Dr Claw",
-with a Slack digest only when there is something to say. The classification
+runner executed four times a day (07:00, 12:00, 17:00, 22:00 local) inside
+the owner's NanoClaw agent, "Dr Claw", with a Slack digest only when there is
+something to say. The classification
 rules (`rules.yaml`), the conservative autonomous policy and the per-account
 run state keep their shape. What changes is that code, not a model, does the
 fetching, matching and acting; the model only renders a digest.
@@ -25,12 +26,13 @@ DM.
 
 ## Goals
 
-- Every hour, new mail in both accounts is classified by `rules.yaml`
-  and only safe actions are applied: label, archive, mark read, hold. Nothing
-  is deleted or moved to Deleted Items, ever, by this runner.
+- At 07:00, 12:00, 17:00 and 22:00 each day, new mail in both accounts is
+  classified by `rules.yaml` and only safe actions are applied: label,
+  archive, mark read, hold. Nothing is deleted or moved to Deleted Items,
+  ever, by this runner.
 - The owner gets a Slack digest only when a run found important mail, held
   anything a trash rule matched, left anything unmatched for review, or hit
-  an error. Quiet runs cost no model tokens.
+  an error. A quiet run costs one short agent turn and sends nothing.
 - The first run sweeps a bounded backlog of seven days once, with the same
   conservative actions, then runs incrementally.
 - Secrets stay out of the container: no OAuth tokens, client secrets or
@@ -75,10 +77,11 @@ DM.
   with `credential_not_found`.
 - The proxy re-signs every HTTPS connection; Python's `requests` needs
   `REQUESTS_CA_BUNDLE=$SSL_CERT_FILE` (the battery wrapper already sets it).
-- NanoClaw task gate scripts run inside the agent container with the agent's
-  environment, 30-second timeout, 1 MB output, last stdout line must be
-  `{"wakeAgent": <bool>, "data": {...}}`; a cadence above four fires a day is
-  accepted only with a gate script; repeated script errors back the series
+- NanoClaw refuses a task recurrence above four fires a day unless it has a
+  gate script (`ncl tasks create` help). Four fires a day needs none, which
+  this design relies on. For reference, gate scripts run inside the agent
+  container with a 30-second timeout and a JSON last line
+  `{"wakeAgent": <bool>, "data": {...}}`; repeated script errors back the series
   off and auto-pause it after eight.
 - `rules.yaml`: 184 rules, `match_field` sender (153) or subject (20) and a
   few header rules; actions keep 62, trash 94, archive 12, calendar_event 5;
@@ -104,11 +107,14 @@ DM.
   - `state.py`: `state.json` read/write (shape below), per-account `last_run`
     advanced only past successful messages, error-suppression timestamps.
   - `run.py`: the orchestration: window, fetch, match, act, summarise; honours
-    `--max`, `--budget-seconds`, `--dry-run`, `--accounts`.
-  - `gate.py`: wraps `run.py` and prints the NanoClaw JSON line; catches
-    everything.
-  - `digest.py`: renders the human digest text from a summary (used for
-    `last-run-summary.md` and offered to the agent verbatim in `data`).
+    `--max`, `--budget-seconds`, `--dry-run`, `--accounts`. Catches
+    everything at the top level so the verdict below is always printed.
+  - `digest.py`: renders the human digest text from a summary, writes it to
+    `data/last-digest.txt`, appends it to `data/last-run-summary.md`, and
+    decides the verdict (`REPORT` or `QUIET`, rule in Section 2).
+  - The runner's **last two stdout lines** are the contract the agent reads:
+    `VERDICT: REPORT` or `VERDICT: QUIET`, preceded by
+    `DIGEST: data/last-digest.txt`.
 - `relay/` — Python package, `python -m relay`, host-side only (Section 3).
 - `scripts/run.sh` — the venv-owning wrapper, a copy of weatherToBattery's
   `scripts/run-nightly.sh` with the script name changed: venv at
@@ -139,10 +145,11 @@ DM.
 
 ### 2. What one run does
 
-Inputs: `rules.yaml`, `state.json`, flags. Defaults: `--max 80`,
-`--budget-seconds 20`, accounts from `state.autonomous.accounts` (default
-both), backlog `settings.autonomous.backlog_days` (default 7) used only when an
-account has no `last_run`.
+Inputs: `rules.yaml`, `state.json`, flags. Defaults: `--max 500`,
+`--budget-seconds 600` (a safety ceiling, not a design constraint), accounts
+from `state.autonomous.accounts` (default both), backlog
+`settings.autonomous.backlog_days` (default 7) used only when an account has
+no `last_run`.
 
 1. Load and validate rules; load state (create it with no `last_run` values
    if missing). A parse failure aborts the whole run with an error summary
@@ -186,7 +193,7 @@ account has no `last_run`.
 6. Write `data/runs/<utc-timestamp>.json` (the summary) and append
    `digest.render(summary)` to `data/last-run-summary.md`.
 
-**Summary shape** (also the gate's `data`):
+**Summary shape** (`data/runs/<utc-timestamp>.json`):
 
 ```json
 {
@@ -202,11 +209,12 @@ account has no `last_run`.
 }
 ```
 
-**Wake rule** (`gate.py`): wake when `important` is non-empty, or `held > 0`,
-or `review > 0`, or `calendar_review > 0`, or `errors` is non-empty, or any
-`auth` value is not `ok` and that condition has not been reported in the last
-six hours (`state.autonomous.last_reported.<condition>`). Otherwise
-`{"wakeAgent": false, "data": {"quiet": true, "processed": N}}`.
+**Verdict rule** (`digest.py`): `REPORT` when `important` is non-empty, or
+`held > 0`, or `review > 0`, or `calendar_review > 0`, or `errors` is
+non-empty, or any `auth` value is not `ok` and that condition has not been
+reported in the last six hours (`state.autonomous.last_reported.<condition>`).
+Otherwise `QUIET`. The verdict is printed as the runner's last stdout line and
+recorded in the summary as `"verdict"`.
 
 **state.json** keeps the documented shape and adds:
 
@@ -268,23 +276,21 @@ only. The container sees none of them.
   readonly: false}` (written through `scripts/q.ts` as before), then `ncl
   groups restart`.
 - Recurring task `inbox-processing` on Dr Claw's group, recurrence
-  `0 * * * *`, with `--script`:
+  `0 7,12,17,22 * * *` in the install timezone (Europe/London). Four fires a
+  day is within NanoClaw's unassisted limit, so there is no gate script and
+  no 30-second budget: the agent itself runs the runner. The task prompt:
 
-  ```bash
-  bash /workspace/extra/email-manager/scripts/run.sh --gate --max 80 --budget-seconds 20
-  ```
+  > Run `bash /workspace/extra/email-manager/scripts/run.sh` and read its
+  > last line. If it is `VERDICT: QUIET`, do nothing further and reply only
+  > "quiet". If it is `VERDICT: REPORT`, send ONE message to the destination
+  > `gethin` containing the exact contents of
+  > `/workspace/extra/email-manager/data/last-digest.txt`. If the command
+  > exits non-zero or prints no verdict, send ONE message to `gethin`:
+  > "⚠️ Inbox run failed (exit N)" followed by the last 15 lines of
+  > `/workspace/extra/email-manager/data/runner.log`. Do not read mail, do
+  > not retry, do not change any file, do not add commentary.
 
-  The wrapper's last stdout line is the runner's JSON line (the wrapper
-  prints the script's final line, which is exactly that). The task prompt,
-  used only when the gate wakes the agent:
-
-  > The inbox runner has finished and attached its summary as data. Send ONE
-  > message to the destination `gethin` containing `data.digest_text`
-  > verbatim. Do not read mail, do not retry the runner, do not change any
-  > file, do not add commentary.
-
-  `gate.py` includes the rendered digest as `data.digest_text` so the agent
-  has nothing to compose.
+  The agent composes nothing: the digest file is written by the runner.
 - Digest text (rendered by `digest.py`, mirrors `autonomous-processing.md`):
 
   ```
@@ -301,10 +307,10 @@ only. The container sees none of them.
   Error form: `⚠️ Email run 19:00: <reason>. <N> messages processed before
   the error.` Auth form: `⚠️ Outlook needs re-authorising: run `python -m
   relay authorize` on the host.` or the Gmail reconnect link.
-- First-time backlog sweep: after `scripts/run.sh --dry-run --max 1000`
-  has been reviewed, a one-off task on Dr Claw's group runs `scripts/run.sh
-  --max 1000` (no gate, no 30-second limit) and reports its digest. The
-  recurring task is created only after that completes.
+- First-time backlog sweep: after `scripts/run.sh --dry-run --max 2000`
+  has been reviewed, a one-off task on Dr Claw's group with the same prompt
+  but `--max 2000` performs the sweep and reports its digest. The recurring
+  task is created only after that completes.
 - Dr Claw's `instructions.prepend.md` gains an "Inbox processing" section:
   run only what the task gives you, never edit `rules.yaml`, `state.json`
   or mail, never delete or move mail yourself, never install packages in the
@@ -318,12 +324,13 @@ only. The container sees none of them.
 | One message's action fails | Counted in `errors`, skipped, `last_run` does not pass it; retried next run; the digest wakes with the error. |
 | Gmail `app_not_connected` or Graph `401` | Account skipped this run; `auth.<p>` set; reported once per six hours via `last_reported`. |
 | Relay cannot refresh | systemd unit fails; the symptom in nanoclaw is the Graph 401 above. `systemctl --user status outlook-token-relay` shows the reason. |
-| Gate budget | The runner stops taking new candidates at `--budget-seconds`; in-flight message operations complete; `capped: true` in the summary. The wrapper plus runner must finish well inside 30 s; the budget is 20 s. |
-| Runner crash | `gate.py` catches everything and prints `{"wakeAgent": true, "data": {"error": ..., "digest_text": "⚠️ ..."}}`; exit 0 so nanoclaw never records a script failure; `last_run` untouched. |
+| Cap or budget reached | The runner stops taking new candidates at `--max` or `--budget-seconds`; in-flight message operations complete; `capped: true` in the summary and noted in the digest; the remainder is picked up next fire. |
+| Runner crash | `run.py` catches everything, writes an error digest to `data/last-digest.txt`, prints `VERDICT: REPORT`, exits 1; `last_run` untouched. The agent's prompt covers both the verdict and the non-zero exit. |
+| Agent fails to follow the prompt | The runner's effects are already applied and recorded in `data/`; only the Slack line is at risk. `data/last-run-summary.md` and `ncl tasks get` are the record. |
 | `rules.yaml` unparsable | As a crash; no account touched. |
-| Rate limits (Gmail 429, Graph 429) | Honour `Retry-After` once within the budget, otherwise count as an error for that message and continue. |
+| Rate limits (Gmail 429, Graph 429) | Honour `Retry-After` up to three times per call, otherwise count as an error for that message and continue. |
 | Clock or window oddities | Windows are computed from message timestamps returned by the provider, never from local assumptions; `last_run` never moves backwards. |
-| Ubuntu or nanoclaw down | Nothing runs; on recovery the window spans the gap and drains at 80 per fire. |
+| Ubuntu or nanoclaw down | Nothing runs; on recovery the window spans the gap and is processed in one fire, up to the 500 cap. |
 
 ### 6. Testing
 
@@ -335,9 +342,10 @@ only. The container sees none of them.
   - state: first-run backlog window; `last_run` advances only past successful
     messages; cap and carry-over; never moves backwards; `last_reported`
     suppression at six hours.
-  - gate: JSON last line for quiet, report-worthy, crash and auth cases;
-    `digest_text` present whenever `wakeAgent` is true; a fake provider that
-    sleeps is cut off at the budget.
+  - verdict contract: `VERDICT: QUIET` / `VERDICT: REPORT` as the last stdout
+    line for quiet, report-worthy, crash and auth cases; `data/last-digest.txt`
+    written whenever the verdict is `REPORT`; a fake provider that sleeps is
+    cut off at the budget with `capped: true`.
   - providers (with `respx` mocked transport): Gmail list with paging, label
     ensure (existing and missing), modify add/remove; Graph list with
     `$filter`, mark read, move, folder ensure; 401/429 mapping.
@@ -346,7 +354,7 @@ only. The container sees none of them.
   persisted atomically; create-then-update decision for the OneCLI secret
   (subprocess mocked); non-zero exit and no file change on failure.
 - **Live, in order**: `run.sh --dry-run --max 1000` against both accounts,
-  reviewed; the backlog sweep via a one-off task; one observed hourly
+  reviewed; the backlog sweep via a one-off task; one observed scheduled
   fire; then an induced Outlook failure (rename `outlook-token.json`, wait
   for the next refresh to fail and the next fire to report once), restore,
   confirm recovery and that the error is not repeated within six hours.
@@ -385,17 +393,20 @@ wrong.
   stores whatever token the response carries, which is correct either way.
 - A browser on Windows reaches `127.0.0.1:3333` inside WSL for the one-time
   authorize callback. **Measured** today for 8099 and 10254 (same mechanism).
-- The runner finishes an 80-message batch inside 20 s through the proxy.
-  **Unverified**; label and move calls are single round-trips, so 80 messages
-  is roughly 160–240 calls. If wrong: lower `--max`; the carry-over makes any
-  cap correct, only slower to drain.
+- A five-hour window of mail, and the one-off seven-day sweep, stay within
+  the Gmail and Graph rate limits at two or three calls per message with
+  `Retry-After` honoured. **Unverified**; the dry run of the sweep measures
+  it. If wrong: lower `--max`; the carry-over makes any cap correct, only
+  slower to drain.
 - Gmail's `q=after:<unix>` and Graph's `receivedDateTime ge` honour the
   timestamps the runner stores. **Verified** by API documentation; both
   accept the formats the design uses.
 - The proxy passes `login.microsoftonline.com` through for the host relay.
   Not needed: the relay runs on the host without the proxy. **n/a**.
-- NanoClaw's gate contract (JSON last line, 30 s, exit 0 = no backoff).
-  **Verified** from `container/agent-runner/src/scheduling/task-script.ts`.
+- NanoClaw accepts `0 7,12,17,22 * * *` without a gate script and runs the
+  agent's own shell command with no time limit. **Verified**: the refusal
+  threshold is "more frequent than 4 fires/day" (`ncl tasks create` help) and
+  the battery job already runs an agent-executed script this way.
 - `em/*` labels from the previous Gmail setup still exist and carry the same
   names. **Unverified**; the runner's ensure step creates any missing label,
   so the cost is only that the names must match the rules file, which they
