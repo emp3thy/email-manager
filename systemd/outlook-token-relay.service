@@ -1,0 +1,8 @@
+[Unit]
+Description=Refresh the Outlook token into OneCLI for email-manager
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/gethi/email-manager
+ExecStart=/home/gethi/email-manager/.venv-host/bin/python -m relay refresh
+Environment=PATH=/home/gethi/.local/bin:/usr/local/bin:/usr/bin:/bin
