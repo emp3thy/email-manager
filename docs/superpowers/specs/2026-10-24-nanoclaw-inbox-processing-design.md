@@ -381,18 +381,26 @@ wrong.
 - Gmail calls from Dr Claw's container are authenticated by the connection.
   **Verified** today (profile returned).
 - `onecli secrets create/update` and `agents grants attach-secret` work
-  non-interactively from the host. **Verified** today for create, attach and
-  detach/delete; `update --id` exists in the CLI but was not exercised. If
-  wrong: delete-and-recreate instead, which costs one extra grant per refresh.
-- The Azure app registration still exists, accepts the `consumers` tenant,
-  and has `http://localhost:3333/auth/callback` as a redirect URI.
-  **Unverified** until the owner recovers its client secret. If wrong: add
-  the URI or a new secret in the Azure portal; no design change.
-- Microsoft consumer accounts rotate the refresh token on every refresh and
-  the old one is then invalid. **Unverified** on this app; the relay always
-  stores whatever token the response carries, which is correct either way.
+  non-interactively from the host. **Verified** today: create, `update --id`
+  (value replaced in place), attach, detach and delete all exercised.
+- The Azure app registration (new, client id `fd8c524f-…11ab`, personal
+  accounts, Web redirect `http://localhost:3333/auth/callback`) signs in
+  against the `consumers` endpoint with auth code + PKCE + client secret.
+  **Verified** today end to end: callback received, tokens issued
+  (`expires_in` 3599), Graph `/me` and `/me/mailFolders/inbox` returned 200.
+  The refresh token from that sign-in is already stored at
+  `~/.config/email-manager/outlook-token.json` (0600), so the relay's first
+  `refresh` can run without another browser step.
+- Microsoft consumer accounts rotate the refresh token on every refresh.
+  **Verified** today (`rotated=True` on the first refresh); the relay must
+  persist the returned token every time.
 - A browser on Windows reaches `127.0.0.1:3333` inside WSL for the one-time
-  authorize callback. **Measured** today for 8099 and 10254 (same mechanism).
+  authorize callback. **Verified** today by the sign-in itself.
+- The Outlook folders `em-important`, `em-newsletters`, `em-notifications`,
+  `em-promotions`, `em-receipts` already exist. **Verified** today; the
+  runner's ensure step will find nothing to create. The inbox holds about
+  5,850 messages, 3,057 unread, so the seven-day sweep must rely on the date
+  window, not on unread status alone.
 - A five-hour window of mail, and the one-off seven-day sweep, stay within
   the Gmail and Graph rate limits at two or three calls per message with
   `Retry-After` honoured. **Unverified**; the dry run of the sweep measures
@@ -408,8 +416,8 @@ wrong.
   threshold is "more frequent than 4 fires/day" (`ncl tasks create` help) and
   the battery job already runs an agent-executed script this way.
 - `em/*` labels from the previous Gmail setup still exist and carry the same
-  names. **Unverified**; the runner's ensure step creates any missing label,
-  so the cost is only that the names must match the rules file, which they
-  do by construction.
+  names. **Verified** today: `em/held`, `em/important`, `em/newsletters`,
+  `em/notifications`, `em/promotions`, `em/receipts`, `em/review`, `em/spam`
+  are all present; the ensure step will find nothing to create.
 - The owner wants `em/review` applied to every unmatched Gmail message.
   **Verified** from `autonomous-processing.md`; it is the documented policy.
