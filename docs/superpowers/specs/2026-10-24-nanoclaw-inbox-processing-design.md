@@ -150,8 +150,8 @@ account has no `last_run`.
 2. For each account: window start = `accounts.<p>.last_run`, else now minus
    `backlog_days`. Fetch messages received after the window start, oldest
    first, in pages, stopping at `--max` candidates. Candidate filter:
-   - Gmail: `q=after:<unix-ts> -label:em/processed`, plus a client-side skip
-     of anything carrying any `em/*` label. On first use the runner creates
+   - Gmail: `q=after:<unix-ts> in:inbox`, with a client-side skip of
+     anything already carrying any `em/*` label. On first use the runner creates
      the labels `em/important`, `em/newsletters`, `em/notifications`,
      `em/promotions`, `em/receipts`, `em/spam`, `em/held`, `em/review` if
      absent (idempotent lookup-then-create).
