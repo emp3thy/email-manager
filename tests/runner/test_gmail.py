@@ -54,6 +54,18 @@ def test_list_since_pages_and_dedupes_and_orders_oldest_first(respx_mock, provid
 
 
 @respx.mock(base_url=BASE)
+def test_list_since_stops_when_a_page_token_repeats_the_same_ids(respx_mock, provider):
+    respx_mock.get("/labels").mock(return_value=httpx.Response(200, json=label_list(EM_LABELS)))
+    listing = respx_mock.get("/messages").mock(
+        return_value=httpx.Response(200, json={"messages": [{"id": "a"}], "nextPageToken": "again"})
+    )
+    respx_mock.get("/messages/a").mock(return_value=httpx.Response(200, json=meta("a", "x@example.test", "s", 1000)))
+    out = provider.list_since(datetime(2026, 10, 1, tzinfo=timezone.utc), limit=10)
+    assert [m.id for m in out] == ["a"]
+    assert listing.call_count == 2
+
+
+@respx.mock(base_url=BASE)
 def test_list_since_skips_messages_already_carrying_em_label(respx_mock, provider):
     respx_mock.get("/labels").mock(return_value=httpx.Response(200, json=label_list(EM_LABELS)))
     respx_mock.get("/messages").mock(return_value=httpx.Response(200, json={"messages": [{"id": "done"}, {"id": "new"}]}))

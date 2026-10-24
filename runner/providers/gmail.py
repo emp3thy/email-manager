@@ -77,14 +77,16 @@ class GmailProvider:
             if token:
                 params["pageToken"] = token
             page = self._req("GET", f"{BASE}/messages", params=params).json()
+            added = 0
             for item in page.get("messages", []) or []:
                 mid = item["id"]
                 if mid not in seen:
                     seen.add(mid)
                     ids.append(mid)
+                    added += 1
             token = page.get("nextPageToken")
-            if not token:
-                break
+            if not token or added == 0:
+                break  # no token, or a page that adds nothing new (paging fault): stop
         out: list[Message] = []
         header_params = [("format", "metadata")] + [("metadataHeaders", h) for h in (*BASE_HEADERS, *self.header_names)]
         for mid in ids:
