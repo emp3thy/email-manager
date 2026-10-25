@@ -17,6 +17,7 @@ from typing import Callable
 import httpx
 
 from .calendar import LONDON, BodyAuthError, GraphCalendar, calendar_step
+from .models import Message
 from .policy import decide
 from .providers.base import AuthError, Provider, TransientError
 from .rules import Rule, match
@@ -79,7 +80,7 @@ class Summary:
 BACKFILL_DAYS = 14
 
 
-def _record_outcome(summary: Summary, outcome, account: str) -> None:
+def _record_outcome(summary: Summary, outcome, account: str, message: Message) -> None:
     if outcome.status == "created":
         summary.calendar_created.append(
             {"title": outcome.title, "date": outcome.date.isoformat(), "account": account}
@@ -88,7 +89,7 @@ def _record_outcome(summary: Summary, outcome, account: str) -> None:
         summary.calendar_skipped += 1
     else:
         summary.calendar_review += 1
-        log.warning("%s: calendar review: %s", account, outcome.reason)
+        log.warning("%s: calendar review: %r: %s", account, message.subject, outcome.reason)
 
 
 def _mark_auth(summary: Summary, account: str, exc: AuthError) -> None:
@@ -160,7 +161,7 @@ def backfill_calendar(
                 summary.errors.append(f"backfill: {account}: {exc}")
                 summary.calendar_review += 1
                 return calendar_ok
-            _record_outcome(summary, outcome, account)
+            _record_outcome(summary, outcome, account, message)
     if complete and not cfg.dry_run:
         state.mark_backfilled(now)
     return calendar_ok
@@ -277,7 +278,7 @@ def run(
                         summary.errors.append(f"{account}: calendar {message.id}: {exc}")
                         summary.calendar_review += 1
                     else:
-                        _record_outcome(summary, outcome, account)
+                        _record_outcome(summary, outcome, account, message)
             if decision.important:
                 summary.important.append({"account": account, "from": message.sender_display(), "subject": message.subject})
             # Advance only while every earlier message in this window succeeded: once an
