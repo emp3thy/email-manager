@@ -217,3 +217,37 @@ def test_run_calendar_auth_lost_once_then_review(tmp_path, msg):
     assert s.calendar_review == 2
     assert len(outlook.applied) == 2
     assert state.last_run("outlook") == NOW
+
+
+def test_run_body_auth_error_marks_mail_account_not_calendar(tmp_path, msg):
+    from tests.runner.fakes import FakeCalendar
+    outlook = FakeProvider("outlook", [cal_msg(msg, 1, 60)], bodies={"c1": AMEX})
+    def boom(_id):
+        raise AuthError("401")
+    outlook.get_body = boom
+    cal = FakeCalendar()
+    s = run(cfg(tmp_path), {"outlook": outlook}, State.load(tmp_path / "state.json"), CAL_RULES,
+            now=lambda: NOW, calendar=cal)
+    assert s.auth["outlook"] == "unauthorized"
+    assert "calendar" not in s.auth
+    assert cal.find_calls == 0
+
+
+def test_run_calendar_unexpected_error_is_contained(tmp_path, msg):
+    from tests.runner.fakes import FakeCalendar
+    outlook = FakeProvider("outlook", [cal_msg(msg, 1, 60)], bodies={"c1": AMEX})
+    cal = FakeCalendar(fail=KeyError("id"))
+    state = State.load(tmp_path / "state.json")
+    s = run(cfg(tmp_path), {"outlook": outlook}, state, CAL_RULES, now=lambda: NOW, calendar=cal)
+    assert s.calendar_review == 1
+    assert len(s.errors) == 1
+    assert outlook.applied == [("c1", ("mark_read", ""))]
+    assert state.last_run("outlook") == NOW
+
+
+def test_run_dry_run_second_same_cycle_is_skipped(tmp_path, msg):
+    from tests.runner.fakes import FakeCalendar
+    outlook = FakeProvider("outlook", [cal_msg(msg, 1, 60), cal_msg(msg, 2, 50)], bodies={"c1": AMEX, "c2": AMEX})
+    s = run(cfg(tmp_path, dry_run=True), {"outlook": outlook}, State.load(tmp_path / "state.json"),
+            CAL_RULES, now=lambda: NOW, calendar=FakeCalendar())
+    assert len(s.calendar_created) == 1 and s.calendar_skipped == 1

@@ -241,6 +241,10 @@ class GraphCalendar:
 
 
 
+class BodyAuthError(AuthError):
+    """The mail provider (not the calendar) rejected the body fetch."""
+
+
 @dataclass(frozen=True)
 class CalendarOutcome:
     status: Literal["created", "skipped", "review"]
@@ -257,6 +261,7 @@ def calendar_step(
     state: State,
     now: datetime,
     dry_run: bool,
+    seen: set | None = None,
 ) -> CalendarOutcome:
     """Create (or recognise) the all-day event for one calendar_event match.
 
@@ -264,6 +269,8 @@ def calendar_step(
     """
     try:
         body = provider.get_body(message.id)
+    except AuthError as exc:
+        raise BodyAuthError(str(exc), exc.connect_url) from exc
     except (TransientError, httpx.HTTPError, ValueError) as exc:
         return CalendarOutcome("review", reason=f"body: {exc}")
     try:
@@ -274,12 +281,17 @@ def calendar_step(
         return CalendarOutcome("review", reason=f"body: {exc}")
     if state.calendar_has(spec.title, spec.date):
         return CalendarOutcome("skipped", spec.title, spec.date)
+    key = (spec.title.casefold().strip(), spec.date)
+    if dry_run and seen is not None and key in seen:
+        return CalendarOutcome("skipped", spec.title, spec.date, "dry-run")
     try:
         if calendar.find(spec.title, spec.date):
             if not dry_run:
                 state.calendar_add(spec.title, spec.date, message.id, message.account, now)
             return CalendarOutcome("skipped", spec.title, spec.date)
         if dry_run:
+            if seen is not None:
+                seen.add(key)
             return CalendarOutcome("created", spec.title, spec.date, "dry-run")
         calendar.create_all_day(spec)
     except AuthError:

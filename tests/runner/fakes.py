@@ -66,9 +66,10 @@ class FakeProvider:
 
 
 class FakeCalendar:
-    def __init__(self, existing=(), fail: Exception | None = None):
+    def __init__(self, existing=(), fail: Exception | None = None, fail_create: Exception | None = None):
         self.existing = set(existing)
         self.fail = fail
+        self.fail_create = fail_create
         self.find_calls = 0
         self.created: list = []
 
@@ -81,5 +82,7 @@ class FakeCalendar:
     def create_all_day(self, spec):
         if self.fail:
             raise self.fail
+        if self.fail_create:
+            raise self.fail_create
         self.created.append(spec)
         return f"E{len(self.created)}"

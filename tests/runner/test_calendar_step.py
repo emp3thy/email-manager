@@ -67,7 +67,7 @@ def test_body_failure_is_review(msg, state):
 
 
 def test_create_failure_records_nothing(msg, state):
-    cal = FakeCalendar(fail=TransientError("503"))
+    cal = FakeCalendar(fail_create=TransientError("503"))
     out = step(msg(), FakeProvider("gmail", bodies={"m1": AMEX}), cal, state)
     assert out.status == "review" and out.reason.startswith("graph: ")
     assert not state.calendar_has("Amex Payment Due", DAY)
@@ -83,3 +83,21 @@ def test_dry_run_never_creates(msg, state):
 def test_auth_error_propagates(msg, state):
     with pytest.raises(AuthError):
         step(msg(), FakeProvider("gmail", bodies={"m1": AMEX}), FakeCalendar(fail=AuthError("403")), state)
+
+
+def test_body_auth_error_is_distinct(msg, state):
+    from runner.calendar import BodyAuthError
+    p = FakeProvider("gmail")
+    p.get_body = lambda _id: (_ for _ in ()).throw(AuthError("401"))
+    with pytest.raises(BodyAuthError):
+        step(msg(), p, FakeCalendar(), state)
+
+
+def test_dry_run_same_cycle_second_is_skipped(msg, state):
+    p = FakeProvider("gmail", bodies={"a": AMEX, "b": AMEX})
+    cal = FakeCalendar()
+    seen = set()
+    o1 = calendar_step(RULE, msg(id="a"), p, cal, state, NOW, True, seen)
+    o2 = calendar_step(RULE, msg(id="b"), p, cal, state, NOW, True, seen)
+    assert (o1.status, o1.reason) == ("created", "dry-run")
+    assert (o2.status, o2.reason) == ("skipped", "dry-run")
