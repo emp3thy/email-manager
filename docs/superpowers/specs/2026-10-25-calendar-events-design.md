@@ -1,7 +1,7 @@
 # Calendar events from rule matches — design
 
 **Date:** 2026-10-25
-**Status:** Draft for review
+**Status:** Assumptions validated; awaiting owner review
 **Owner:** Gethin
 **Builds on:** `docs/superpowers/specs/2026-10-24-nanoclaw-inbox-processing-design.md` (the
 autonomous runner on branch `nanoclaw-inbox`, PR #3)
@@ -293,15 +293,19 @@ Live on Ubuntu, recorded in the ledger: relay re-consent shows the scope;
 real run creates it; Outlook shows the event; the wall's calendar card shows
 it after the next feed refresh.
 
-## 9. Assumptions to validate before the plan
+## 9. Assumptions — validated 2026-10-25
 
-| # | Assumption | Check |
+| # | Assumption | Result |
 |---|---|---|
-| A1 | Amex's body contains "Please pay by: D Mon YYYY" | Verified 2026-10-25 from the live email. |
-| A2 | Amazon "Ordered" bodies contain "Arriving <day>" or a delivery estimate line | Spike on the next Ordered email body (only dispatch/delivery bodies were read on 2026-10-25). |
-| A3 | Graph `calendarView` with London-zone bounds and `POST /me/events` with `isAllDay` work through the OneCLI proxy with the relay token | Spike after re-consent, one call each. |
-| A4 | Gmail `messages.get format=full` is allowed by the existing OneCLI Gmail connection scopes | Spike inside the container. |
-| A5 | The owner can add `Calendars.ReadWrite` to the app registration | Owner action. |
+| A1 | Amex's body contains "Please pay by: D Mon YYYY" | **Holds.** Live email of 2026-10-25: "Please pay by: 30 Oct 2026". |
+| A2 | Amazon "Ordered" bodies contain an arrival phrase | **Holds.** Four recent "Ordered:" emails in the Outlook account all read "Arriving tomorrow" (orders of 4, 12, 17 and 18 Oct). The extractor's `today`/`tomorrow`/`<Weekday> D Month` forms cover this. |
+| A3 | Graph calendar calls work with the relay token | **Negative path confirmed; positive path pending re-consent.** `GET /me/calendarView` with the current token returns 403 `ErrorAccessDenied`, which is exactly the `AuthError` the design routes to the "Calendar needs re-authorising" digest line. The create call is checked live in the plan's deploy task after the owner adds `Calendars.ReadWrite` and re-authorises. |
+| A4 | Gmail full-message fetch is allowed by the existing OneCLI connection | **Holds.** The Gmail connection carries `gmail.readonly`, `gmail.send` and `gmail.modify`; only the `gmail.metadata` scope restricts `messages.get` to headers, and it is not in use. |
+| A5 | The owner can add `Calendars.ReadWrite` to the app registration | **Owner action**, pending. |
+
+Also observed: Graph's `/me/messages` rejects `$filter` on the sender combined
+with `$orderby` (400); the backfill must use `$filter=receivedDateTime ge …`
+as the existing `list_since` does, not a sender filter.
 
 ## 10. Owner actions
 
