@@ -189,3 +189,12 @@ def test_backfill_calendar_step_exception_counts_review_and_does_not_stamp(tmp_p
     assert s.calendar_review >= 1
     assert any(e.startswith("backfill: outlook:") for e in s.errors)
     assert state.calendar_backfilled_at() is None
+
+
+def test_backfill_honours_budget_and_does_not_stamp(tmp_path, msg):
+    p = FakeProvider("outlook", [amex(msg)], bodies={"a1": AMEX})
+    s, state, cal = go(tmp_path, p, budget_seconds=0)
+    assert cal.created == [] and s.calendar_created == [] and s.calendar_skipped == 0
+    assert p.body_calls == []
+    assert [e for e in s.errors if e.startswith("backfill:")] == ["backfill: outlook: budget exhausted"]
+    assert state.calendar_backfilled_at() is None

@@ -63,10 +63,10 @@ class GraphProvider:
         return self._list_inbox(f"receivedDateTime ge {_iso_z(start)} and isRead eq false", limit)
 
     def list_calendar_candidates(self, start: datetime, limit: int) -> list[Message]:
-        """Oldest `limit` inbox messages from `start`, read or not. Leaves `truncated` untouched."""
+        """Newest `limit` inbox messages from `start` (oldest first), read or not. Leaves `truncated` untouched."""
         saved = self.truncated
         try:
-            return self._list_inbox(f"receivedDateTime ge {_iso_z(start)}", limit)
+            return self._list_inbox(f"receivedDateTime ge {_iso_z(start)}", limit, newest_first=True)
         finally:
             self.truncated = saved
 
@@ -83,10 +83,10 @@ class GraphProvider:
             return html_to_text(content)
         return collapse_ws(content)
 
-    def _list_inbox(self, filter_expr: str, limit: int) -> list[Message]:
+    def _list_inbox(self, filter_expr: str, limit: int, newest_first: bool = False) -> list[Message]:
         params = {
             "$filter": filter_expr,
-            "$orderby": "receivedDateTime asc",
+            "$orderby": "receivedDateTime desc" if newest_first else "receivedDateTime asc",
             "$top": PAGE_SIZE,
             "$select": SELECT,
         }

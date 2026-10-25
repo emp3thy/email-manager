@@ -107,6 +107,7 @@ def backfill_calendar(
     summary: Summary,
     now: datetime,
     calendar_seen: set | None = None,
+    deadline: float = float("inf"),
 ) -> bool:
     """Once-only scan of the last BACKFILL_DAYS days for calendar_event matches.
 
@@ -142,6 +143,10 @@ def backfill_calendar(
             rule = match(message, cal_rules)
             if rule is None:
                 continue
+            if time.monotonic() > deadline:
+                log.warning("backfill: %s budget exhausted", account)
+                summary.errors.append(f"backfill: {account}: budget exhausted")
+                return calendar_ok  # incomplete: no stamp, retried next run
             try:
                 outcome = calendar_step(
                     rule, message, provider, calendar, state, now, cfg.dry_run, seen, skip_before=today
@@ -184,7 +189,7 @@ def run(
     calendar_ok = True
     calendar_seen: set = set()
     if state.calendar_backfilled_at() is None:
-        calendar_ok = backfill_calendar(cfg, providers, state, rules, calendar, summary, started, calendar_seen)
+        calendar_ok = backfill_calendar(cfg, providers, state, rules, calendar, summary, started, calendar_seen, deadline)
 
     for account in accounts:
         provider = providers.get(account)
