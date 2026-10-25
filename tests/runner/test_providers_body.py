@@ -1,5 +1,5 @@
 import base64
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import httpx
 import pytest
@@ -70,7 +70,22 @@ def test_gmail_list_calendar_candidates_ignores_labels(respx_mock):
     out = p.list_calendar_candidates(datetime(1970, 1, 1, tzinfo=timezone.utc), 10)
     assert [m.id for m in out] == ["a", "b"]
     assert lst.calls[0].request.url.params["q"].endswith("in:inbox")
-    assert [m.id for m in p.list_calendar_candidates(datetime(1970, 1, 1, tzinfo=timezone.utc), 1)] == ["a"]
+
+
+@respx.mock(base_url=gmail.BASE, assert_all_called=False)
+def test_gmail_list_calendar_candidates_cap_keeps_newest_and_fetches_only_limit(respx_mock):
+    p = gmail_provider()
+    # Gmail lists newest first
+    respx_mock.get("/messages").mock(return_value=httpx.Response(200, json={"messages": [{"id": "c"}, {"id": "b"}, {"id": "a"}]}))
+    routes = {}
+    for mid, ms in (("a", 1_000), ("b", 2_000), ("c", 3_000)):
+        routes[mid] = respx_mock.get(f"/messages/{mid}").mock(return_value=httpx.Response(200, json={
+            "id": mid, "labelIds": ["INBOX"], "internalDate": str(ms),
+            "payload": {"headers": [{"name": "From", "value": "x@example.test"}, {"name": "Subject", "value": "s"}]}}))
+    out = p.list_calendar_candidates(datetime(1970, 1, 1, tzinfo=timezone.utc), 2)
+    assert [m.id for m in out] == ["b", "c"]
+    assert sum(r.call_count for r in routes.values()) == 2
+    assert routes["a"].call_count == 0
 
 
 @respx.mock(base_url=graph.BASE)
@@ -99,7 +114,17 @@ def test_graph_list_calendar_candidates_includes_read_mail(respx_mock):
     assert [m.id for m in out] == ["r"]
     params = route.calls[0].request.url.params
     assert "isRead" not in params["$filter"]
-    assert params["$orderby"] == "receivedDateTime asc"
+
+
+@respx.mock(base_url=graph.BASE)
+def test_graph_list_calendar_candidates_cap_keeps_newest(respx_mock):
+    def item(i, h):
+        return {"id": i, "receivedDateTime": f"2026-01-01T{h:02d}:00:00Z", "subject": "s", "isRead": False}
+    route = respx_mock.get("/mailFolders/inbox/messages").mock(
+        return_value=httpx.Response(200, json={"value": [item("c", 2), item("b", 1), item("a", 0)]}))
+    out = GraphProvider(client=httpx.Client(), sleep=NO_SLEEP).list_calendar_candidates(T0, 2)
+    assert [m.id for m in out] == ["b", "c"]
+    assert route.calls[0].request.url.params["$orderby"] == "receivedDateTime desc"
 
 
 def test_fake_provider_bodies():
@@ -110,5 +135,12 @@ def test_fake_provider_bodies():
         f.get_body("zzz")
     assert f.body_calls == ["a", "zzz"]
     f.applied.append(("a", ("add_label", "em/x")))
-    assert [m.id for m in f.list_calendar_candidates(T0, 1)] == ["a"]
+    assert [m.id for m in f.list_calendar_candidates(T0, 1)] == ["b"]
     assert f.candidate_calls == [(T0, 1)]
+
+
+def test_fake_provider_candidates_cap_keeps_newest_oldest_first():
+    msgs = [Message(id=i, account="x", sender="s", subject="s", received=T0 + timedelta(hours=h), headers=None)
+            for i, h in (("c", 2), ("a", 0), ("b", 1))]
+    f = FakeProvider("x", msgs)
+    assert [m.id for m in f.list_calendar_candidates(T0 - timedelta(days=1), 2)] == ["b", "c"]

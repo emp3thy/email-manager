@@ -82,11 +82,14 @@ class GmailProvider:
         return out[:limit]
 
     def list_calendar_candidates(self, start: datetime, limit: int) -> list[Message]:
-        """Oldest `limit` inbox messages after `start`, processed or not (no em/ label skip)."""
-        ids = self._collect_ids(f"after:{int(start.timestamp())} in:inbox")
+        """Newest `limit` inbox messages after `start` (oldest first), processed or not (no em/ label skip).
+
+        Gmail lists newest first, so metadata is fetched only for the first `limit` ids.
+        """
+        ids = self._collect_ids(f"after:{int(start.timestamp())} in:inbox")[:limit]
         out = [self._to_message(mid, self._fetch_metadata(mid)) for mid in ids]
         out.sort(key=lambda m: m.received)
-        return out[:limit]
+        return out
 
     def _collect_ids(self, query: str) -> list[str]:
         ids: list[str] = []

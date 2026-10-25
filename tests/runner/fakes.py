@@ -55,7 +55,8 @@ class FakeProvider:
         self.candidate_calls.append((start, limit))
         if self.auth_error:
             raise self.auth_error
-        return sorted((m for m in self.messages if m.received > start), key=lambda m: m.received)[:limit]
+        newest = sorted((m for m in self.messages if m.received > start), key=lambda m: m.received, reverse=True)[:limit]
+        return sorted(newest, key=lambda m: m.received)
 
     def apply(self, message_id: str, op: Op) -> None:
         if self.delay:
