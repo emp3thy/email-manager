@@ -6,7 +6,7 @@ import calendar
 import re
 import time
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, time as dtime, timedelta
 from typing import Callable
 from zoneinfo import ZoneInfo
 
@@ -199,9 +199,10 @@ class GraphCalendar:
     def find(self, title: str, day: date) -> str | None:
         want = title.casefold().strip()
         params = {
-            "startDateTime": f"{day.isoformat()}T00:00:00",
-            "endDateTime": f"{(day + timedelta(days=1)).isoformat()}T00:00:00",
-            "$select": "id,subject",
+            # Graph reads an offset-less bound as UTC whatever Prefer says, so qualify it.
+            "startDateTime": datetime.combine(day, dtime(0), tzinfo=LONDON).isoformat(),
+            "endDateTime": datetime.combine(day + timedelta(days=1), dtime(0), tzinfo=LONDON).isoformat(),
+            "$select": "id,subject,start",
             "$top": 50,
         }
         headers = {"Prefer": 'outlook.timezone="Europe/London"'}
@@ -217,7 +218,8 @@ class GraphCalendar:
                     continue
                 seen.add(item["id"])
                 added += 1
-                if (item.get("subject") or "").casefold().strip() == want:
+                starts = ((item.get("start") or {}).get("dateTime") or "")[:10] == day.isoformat()
+                if starts and (item.get("subject") or "").casefold().strip() == want:
                     return item["id"]
             if added == 0:
                 break  # a page that adds nothing new is a paging fault; never follow it again
