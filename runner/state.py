@@ -10,11 +10,12 @@ import copy
 import json
 import os
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 DEFAULT_ACCOUNTS = ["gmail", "outlook"]
 DEFAULT_BACKLOG_DAYS = 7
+CALENDAR_KEEP_DAYS = 90
 
 
 def _fresh() -> dict:
@@ -31,6 +32,7 @@ def _fresh() -> dict:
             "digest": {"channel": "slack", "target": "gethin"},
             "last_reported": {},
         },
+        "calendar": {"backfilled_at": None, "created": []},
     }
 
 
@@ -59,6 +61,9 @@ class State:
         auto.setdefault("last_reported", {})
         for name in auto["accounts"]:
             self.data["accounts"].setdefault(name, {"last_run": None})
+        cal = self.data.setdefault("calendar", {})
+        cal.setdefault("backfilled_at", None)
+        cal.setdefault("created", [])
 
     @classmethod
     def load(cls, path: Path) -> "State":
@@ -79,6 +84,7 @@ class State:
         return cls(path, data)
 
     def save(self) -> None:
+        self._trim_calendar()
         tmp = self.path.with_name(self.path.name + ".tmp")
         self.path.parent.mkdir(parents=True, exist_ok=True)
         tmp.write_text(json.dumps(self.data, indent=2) + "\n", encoding="utf-8")
@@ -114,6 +120,38 @@ class State:
 
     def mark_reported(self, condition: str, now: datetime) -> None:
         self.data["autonomous"]["last_reported"][condition] = _iso(now)
+
+    # --- calendar events ------------------------------------------------------
+
+    def calendar_has(self, title: str, day: date) -> bool:
+        key = (title.casefold().strip(), day.isoformat())
+        return any(
+            (e["title"].casefold().strip(), e["date"]) == key
+            for e in self.data["calendar"]["created"]
+        )
+
+    def calendar_add(self, title: str, day: date, message_id: str, account: str, now: datetime) -> None:
+        self.data["calendar"]["created"].append({
+            "title": title,
+            "date": day.isoformat(),
+            "message_id": message_id,
+            "account": account,
+            "created_at": _iso(now),
+        })
+
+    def calendar_backfilled_at(self) -> datetime | None:
+        return _parse(self.data["calendar"].get("backfilled_at"))
+
+    def mark_backfilled(self, now: datetime) -> None:
+        self.data["calendar"]["backfilled_at"] = _iso(now)
+
+    def _trim_calendar(self) -> None:
+        created = self.data["calendar"]["created"]
+        stamps = [_parse(e.get("created_at")) for e in created]
+        stamps = [t for t in stamps if t is not None]
+        ref = max(stamps).date() if stamps else datetime.now(timezone.utc).date()
+        cutoff = (ref - timedelta(days=CALENDAR_KEEP_DAYS)).isoformat()
+        self.data["calendar"]["created"] = [e for e in created if e["date"] >= cutoff]
 
     def snapshot(self) -> dict:
         return copy.deepcopy(self.data)

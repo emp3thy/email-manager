@@ -67,3 +67,65 @@ def test_repo_rules_file_loads_if_present():
         pytest.skip("no rules.yaml in checkout")
     rules = load_rules(p)
     assert len(rules) > 100 and all(r.action in ACTIONS for r in rules)
+
+
+def _cal_rules(tmp_path, extra):
+    p = tmp_path / "r.yaml"
+    p.write_text(
+        "rules:\n- pattern: '*payment*due*'\n  match_field: subject\n  label: em/important\n"
+        "  action: calendar_event\n" + extra,
+        encoding="utf-8",
+    )
+    return p
+
+
+def test_calendar_rule_loads_fields(tmp_path):
+    p = _cal_rules(tmp_path, "  calendar_title: Amex Payment Due\n  date_extractor: pay_by\n")
+    r = load_rules(p)[0]
+    assert (r.date_extractor, r.calendar_title, r.calendar_title_from) == ("pay_by", "Amex Payment Due", None)
+
+
+def test_calendar_rule_requires_extractor(tmp_path):
+    p = _cal_rules(tmp_path, "  calendar_title: Amex Payment Due\n")
+    with pytest.raises(RulesError, match="rule #1 needs date_extractor"):
+        load_rules(p)
+
+
+def test_calendar_rule_rejects_unknown_extractor(tmp_path):
+    p = _cal_rules(tmp_path, "  calendar_title: X\n  date_extractor: bogus\n")
+    with pytest.raises(RulesError, match="rule #1 needs date_extractor"):
+        load_rules(p)
+
+
+def test_calendar_rule_requires_a_title(tmp_path):
+    p = _cal_rules(tmp_path, "  date_extractor: arriving\n")
+    with pytest.raises(RulesError, match="needs calendar_title or calendar_title_from"):
+        load_rules(p)
+
+
+def test_calendar_rule_title_from_subject(tmp_path):
+    p = _cal_rules(tmp_path, "  calendar_title_from: subject\n  date_extractor: arriving\n")
+    assert load_rules(p)[0].calendar_title_from == "subject"
+
+
+def test_calendar_rule_unknown_title_from(tmp_path):
+    p = _cal_rules(tmp_path, "  calendar_title_from: body\n  date_extractor: arriving\n")
+    with pytest.raises(RulesError, match="unknown calendar_title_from"):
+        load_rules(p)
+
+
+def test_non_calendar_rule_ignores_calendar_fields(tmp_path):
+    p = tmp_path / "r.yaml"
+    p.write_text(
+        "rules:\n- pattern: '*x*'\n  match_field: subject\n  label: em/receipts\n  action: keep\n"
+        "  date_extractor: bogus\n  calendar_title_from: body\n",
+        encoding="utf-8",
+    )
+    r = load_rules(p)[0]
+    assert (r.date_extractor, r.calendar_title, r.calendar_title_from) == (None, None, None)
+
+
+def test_real_rules_file_calendar_rules_have_extractors():
+    rules = load_rules(Path(__file__).parents[2] / "rules.yaml")
+    cal = [r for r in rules if r.action == "calendar_event"]
+    assert len(cal) == 5 and all(r.date_extractor in ("pay_by", "arriving") for r in cal)

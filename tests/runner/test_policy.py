@@ -15,8 +15,8 @@ TABLE = [
     ("archive", "outlook", (("move_to_folder", "em-notifications"),), "archive"),
     ("trash", "gmail", (("add_label", "em/notifications"), ("add_label", "em/held")), "held"),
     ("trash", "outlook", (("mark_read", ""),), "held"),
-    ("calendar_event", "gmail", (("add_label", "em/notifications"),), "calendar_review"),
-    ("calendar_event", "outlook", (("mark_read", ""),), "calendar_review"),
+    ("calendar_event", "gmail", (("add_label", "em/notifications"),), "calendar"),
+    ("calendar_event", "outlook", (("mark_read", ""),), "calendar"),
     (None, "gmail", (("add_label", "em/review"),), "review"),
     (None, "outlook", (("mark_read", ""),), "review"),
 ]
@@ -53,3 +53,10 @@ def test_decide_never_emits_delete_or_trash_ops(action, provider, ops, bucket):
 def test_unknown_provider_rejected():
     with pytest.raises(ValueError):
         decide(rule("keep"), "imap")
+
+
+def test_policy_calendar_bucket():
+    from runner.policy import decide
+    from runner.rules import Rule
+    rule = Rule("*x*", "subject", "em/receipts", "calendar_event", calendar_title="T", date_extractor="pay_by")
+    assert decide(rule, "gmail").bucket == "calendar"

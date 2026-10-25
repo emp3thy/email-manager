@@ -29,9 +29,9 @@ every ~15 minutes. Each run processes mail that arrived since the last run, appl
 2. **Existing rules only.** Do not create, edit, or infer new rules. Do not run the
    Initial Cleanup / profiling phases. If a message matches no rule, label it `em/review`
    (Gmail) or mark it read and leave it in place (Outlook) — never guess a destructive action.
-3. **No calendar side effects by default.** `action: calendar_event` rules are treated as
-   `keep` in autonomous mode (label + leave in inbox) and listed in the digest under
-   "needs calendar review". Calendar/WhatsApp session sync stays an interactive task.
+3. **Calendar events only via `calendar_event` rules.** `action: calendar_event` rules create
+   an all-day Outlook event (see the action table); when no date can be read or the calendar
+   is unavailable they are listed in the digest under "needs calendar review".
 4. **Incremental only.** Process just the window since `last_run`. Never re-sweep the
    whole mailbox.
 5. **Fail safe and quiet-loud.** On any error (auth expired, MCP down, rule file unreadable),
@@ -84,7 +84,7 @@ For each target account (default: both Gmail and Outlook; the scheduler may narr
    | `keep` | add `em/<category>` label | `mark-as-read`, leave in Inbox |
    | `archive` | add label, remove `INBOX` | `move-emails` → `em-<category>` folder |
    | `trash` | add label **+ `em/held`**, leave in Inbox (no delete) | add nothing, `mark-as-read`, leave in Inbox (no move) — list under "held" |
-   | `calendar_event` | add label, leave in Inbox, list under "needs calendar review" | `mark-as-read`, leave in Inbox, list under "needs calendar review" |
+   | `calendar_event` | add label, create all-day Outlook event; review when no date | mark read, create all-day Outlook event; review when no date |
    | unmatched | add `em/review` label | `mark-as-read`, leave in Inbox |
 
 6. **Retention/auto-archive is skipped** in autonomous mode (it can move aged mail toward
