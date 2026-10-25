@@ -175,6 +175,13 @@ def cal_msg(msg, i, minutes_ago):
                received=NOW - timedelta(minutes=minutes_ago))
 
 
+def backfilled_state(tmp_path) -> State:
+    """State whose one-off backfill is already done, so run-level tests see only the main loop."""
+    state = State.load(tmp_path / "state.json")
+    state.mark_backfilled(NOW)
+    return state
+
+
 def test_run_calendar_match_creates_and_summarises(tmp_path, msg):
     from tests.runner.fakes import FakeCalendar
     outlook = FakeProvider("outlook", [cal_msg(msg, 1, 60)], bodies={"c1": AMEX})
@@ -192,7 +199,7 @@ def test_run_calendar_skipped_counts(tmp_path, msg):
     from datetime import date
     outlook = FakeProvider("outlook", [cal_msg(msg, 1, 60)], bodies={"c1": AMEX})
     cal = FakeCalendar(existing={("Amex Payment Due", date(2026, 10, 30))})
-    s = run(cfg(tmp_path), {"outlook": outlook}, State.load(tmp_path / "state.json"), CAL_RULES,
+    s = run(cfg(tmp_path), {"outlook": outlook}, backfilled_state(tmp_path), CAL_RULES,
             now=lambda: NOW, calendar=cal)
     assert s.calendar_skipped == 1 and s.calendar_created == [] and s.calendar_review == 0
 
@@ -201,7 +208,7 @@ def test_run_calendar_dry_run_reports_would_create(tmp_path, msg):
     from tests.runner.fakes import FakeCalendar
     outlook = FakeProvider("outlook", [cal_msg(msg, 1, 60)], bodies={"c1": AMEX})
     cal = FakeCalendar()
-    s = run(cfg(tmp_path, dry_run=True), {"outlook": outlook}, State.load(tmp_path / "state.json"),
+    s = run(cfg(tmp_path, dry_run=True), {"outlook": outlook}, backfilled_state(tmp_path),
             CAL_RULES, now=lambda: NOW, calendar=cal)
     assert len(s.calendar_created) == 1 and cal.created == [] and outlook.applied == []
 
@@ -210,7 +217,7 @@ def test_run_calendar_auth_lost_once_then_review(tmp_path, msg):
     from tests.runner.fakes import FakeCalendar
     outlook = FakeProvider("outlook", [cal_msg(msg, 1, 60), cal_msg(msg, 2, 50)], bodies={"c1": AMEX, "c2": AMEX})
     cal = FakeCalendar(fail=AuthError("403"))
-    state = State.load(tmp_path / "state.json")
+    state = backfilled_state(tmp_path)
     s = run(cfg(tmp_path), {"outlook": outlook}, state, CAL_RULES, now=lambda: NOW, calendar=cal)
     assert s.auth["calendar"] == "unauthorized"
     assert cal.find_calls == 1
@@ -226,7 +233,7 @@ def test_run_body_auth_error_marks_mail_account_not_calendar(tmp_path, msg):
         raise AuthError("401")
     outlook.get_body = boom
     cal = FakeCalendar()
-    s = run(cfg(tmp_path), {"outlook": outlook}, State.load(tmp_path / "state.json"), CAL_RULES,
+    s = run(cfg(tmp_path), {"outlook": outlook}, backfilled_state(tmp_path), CAL_RULES,
             now=lambda: NOW, calendar=cal)
     assert s.auth["outlook"] == "unauthorized"
     assert "calendar" not in s.auth
@@ -237,7 +244,7 @@ def test_run_calendar_unexpected_error_is_contained(tmp_path, msg):
     from tests.runner.fakes import FakeCalendar
     outlook = FakeProvider("outlook", [cal_msg(msg, 1, 60)], bodies={"c1": AMEX})
     cal = FakeCalendar(fail=KeyError("id"))
-    state = State.load(tmp_path / "state.json")
+    state = backfilled_state(tmp_path)
     s = run(cfg(tmp_path), {"outlook": outlook}, state, CAL_RULES, now=lambda: NOW, calendar=cal)
     assert s.calendar_review == 1
     assert len(s.errors) == 1
@@ -248,6 +255,6 @@ def test_run_calendar_unexpected_error_is_contained(tmp_path, msg):
 def test_run_dry_run_second_same_cycle_is_skipped(tmp_path, msg):
     from tests.runner.fakes import FakeCalendar
     outlook = FakeProvider("outlook", [cal_msg(msg, 1, 60), cal_msg(msg, 2, 50)], bodies={"c1": AMEX, "c2": AMEX})
-    s = run(cfg(tmp_path, dry_run=True), {"outlook": outlook}, State.load(tmp_path / "state.json"),
+    s = run(cfg(tmp_path, dry_run=True), {"outlook": outlook}, backfilled_state(tmp_path),
             CAL_RULES, now=lambda: NOW, calendar=FakeCalendar())
     assert len(s.calendar_created) == 1 and s.calendar_skipped == 1
