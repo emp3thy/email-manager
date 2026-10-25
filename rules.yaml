@@ -96,6 +96,7 @@ rules:
   label: em/important
   action: calendar_event
   calendar_title: M&S Credit Card Payment Due
+  date_extractor: pay_by
   last_matched: '2026-05-04'
 - pattern: '*@email.mandsbank.com'
   match_field: sender
@@ -128,6 +129,7 @@ rules:
   label: em/important
   action: calendar_event
   calendar_title: Amex Payment Due
+  date_extractor: pay_by
   last_matched: '2026-03-25'
 - pattern: '*payment*reminder*'
   match_field: subject
@@ -135,6 +137,7 @@ rules:
   label: em/important
   action: calendar_event
   calendar_title: Amex Payment Due
+  date_extractor: pay_by
   last_matched: '2026-03-18'
 - pattern: '*minimum payment*'
   match_field: subject
@@ -142,6 +145,7 @@ rules:
   label: em/important
   action: calendar_event
   calendar_title: Amex Payment Due
+  date_extractor: pay_by
   last_matched: '2026-03-18'
 - pattern: '*payment*received*'
   match_field: subject
@@ -594,6 +598,8 @@ rules:
   sender_pattern: '*@amazon.co.uk'
   label: em/receipts
   action: calendar_event
+  calendar_title_from: subject
+  date_extractor: arriving
   last_matched: '2026-05-04'
 - pattern: '*@amazon.co.uk'
   match_field: sender
