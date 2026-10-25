@@ -237,8 +237,16 @@ class GraphCalendar:
             "end": {"dateTime": f"{(spec.date + timedelta(days=1)).isoformat()}T00:00:00", "timeZone": "Europe/London"},
             "body": {"contentType": "text", "content": spec.note},
         }
-        return self._req("POST", f"{BASE}/events", json=payload).json()["id"]
-
+        # POST is the one non-idempotent call: a timeout may come after Graph committed the
+        # event, so never resend it blindly. Look it up once instead.
+        try:
+            resp = self._req("POST", f"{BASE}/events", json=payload, retry_transport=False)
+        except httpx.HTTPError as exc:
+            found = self.find(spec.title, spec.date)
+            if found:
+                return found
+            raise TransientError(f"POST {BASE}/events: {exc}; event not found afterwards") from exc
+        return resp.json()["id"]
 
 
 class BodyAuthError(AuthError):
