@@ -56,7 +56,7 @@ behaviour below is a reconstruction agreed with the owner on 2026-10-25.
 The five existing rules become:
 
 ```yaml
-- pattern: '*@mandsbank.com'            # existing M&S rule (sender match)
+- pattern: <existing M&S sender pattern, unchanged>
   action: calendar_event
   calendar_title: M&S Credit Card Payment Due
   date_extractor: pay_by
