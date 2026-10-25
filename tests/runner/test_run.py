@@ -163,3 +163,57 @@ def test_main_writes_run_json_and_appends_summary_md(tmp_path, msg, monkeypatch,
     assert len(runs) == 2
     md = (tmp_path / "data" / "last-run-summary.md").read_text(encoding="utf-8")
     assert md.count("📬 Email run") == 2
+
+
+CAL_RULES = [Rule("*payment due*", "subject", "em/receipts", "calendar_event",
+                  calendar_title="Amex Payment Due", date_extractor="pay_by")]
+AMEX = "Payment due. Pay by Fri 30 Oct 2026 to avoid interest."
+
+
+def cal_msg(msg, i, minutes_ago):
+    return msg(id=f"c{i}", account="outlook", sender="a@x.test", subject="Payment due",
+               received=NOW - timedelta(minutes=minutes_ago))
+
+
+def test_run_calendar_match_creates_and_summarises(tmp_path, msg):
+    from tests.runner.fakes import FakeCalendar
+    outlook = FakeProvider("outlook", [cal_msg(msg, 1, 60)], bodies={"c1": AMEX})
+    cal = FakeCalendar()
+    state = State.load(tmp_path / "state.json")
+    s = run(cfg(tmp_path), {"outlook": outlook}, state, CAL_RULES, now=lambda: NOW, calendar=cal)
+    assert s.calendar_created == [{"title": "Amex Payment Due", "date": "2026-10-30", "account": "outlook"}]
+    assert outlook.applied == [("c1", ("mark_read", ""))]
+    assert state.last_run("outlook") == NOW
+    assert json.loads(s.to_json())["calendar_created"][0]["date"] == "2026-10-30"
+
+
+def test_run_calendar_skipped_counts(tmp_path, msg):
+    from tests.runner.fakes import FakeCalendar
+    from datetime import date
+    outlook = FakeProvider("outlook", [cal_msg(msg, 1, 60)], bodies={"c1": AMEX})
+    cal = FakeCalendar(existing={("Amex Payment Due", date(2026, 10, 30))})
+    s = run(cfg(tmp_path), {"outlook": outlook}, State.load(tmp_path / "state.json"), CAL_RULES,
+            now=lambda: NOW, calendar=cal)
+    assert s.calendar_skipped == 1 and s.calendar_created == [] and s.calendar_review == 0
+
+
+def test_run_calendar_dry_run_reports_would_create(tmp_path, msg):
+    from tests.runner.fakes import FakeCalendar
+    outlook = FakeProvider("outlook", [cal_msg(msg, 1, 60)], bodies={"c1": AMEX})
+    cal = FakeCalendar()
+    s = run(cfg(tmp_path, dry_run=True), {"outlook": outlook}, State.load(tmp_path / "state.json"),
+            CAL_RULES, now=lambda: NOW, calendar=cal)
+    assert len(s.calendar_created) == 1 and cal.created == [] and outlook.applied == []
+
+
+def test_run_calendar_auth_lost_once_then_review(tmp_path, msg):
+    from tests.runner.fakes import FakeCalendar
+    outlook = FakeProvider("outlook", [cal_msg(msg, 1, 60), cal_msg(msg, 2, 50)], bodies={"c1": AMEX, "c2": AMEX})
+    cal = FakeCalendar(fail=AuthError("403"))
+    state = State.load(tmp_path / "state.json")
+    s = run(cfg(tmp_path), {"outlook": outlook}, state, CAL_RULES, now=lambda: NOW, calendar=cal)
+    assert s.auth["calendar"] == "unauthorized"
+    assert cal.find_calls == 1
+    assert s.calendar_review == 2
+    assert len(outlook.applied) == 2
+    assert state.last_run("outlook") == NOW

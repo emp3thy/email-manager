@@ -63,3 +63,23 @@ class FakeProvider:
         if op[0] in self.fail_ops:
             raise TransientError(f"{op[0]} failed for {message_id}")
         self.applied.append((message_id, op))
+
+
+class FakeCalendar:
+    def __init__(self, existing=(), fail: Exception | None = None):
+        self.existing = set(existing)
+        self.fail = fail
+        self.find_calls = 0
+        self.created: list = []
+
+    def find(self, title, day):
+        self.find_calls += 1
+        if self.fail:
+            raise self.fail
+        return "E-existing" if (title, day) in self.existing else None
+
+    def create_all_day(self, spec):
+        if self.fail:
+            raise self.fail
+        self.created.append(spec)
+        return f"E{len(self.created)}"

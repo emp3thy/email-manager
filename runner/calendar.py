@@ -7,14 +7,15 @@ import re
 import time
 from dataclasses import dataclass
 from datetime import date, datetime, time as dtime, timedelta
-from typing import Callable
+from typing import Callable, Literal
 from zoneinfo import ZoneInfo
 
 import httpx
 
 from .models import Message
-from .providers.base import request_with_retry
+from .providers.base import AuthError, Provider, TransientError, request_with_retry
 from .rules import EXTRACTOR_NAMES, Rule
+from .state import State
 
 BASE = "https://graph.microsoft.com/v1.0/me"
 
@@ -238,3 +239,52 @@ class GraphCalendar:
         }
         return self._req("POST", f"{BASE}/events", json=payload).json()["id"]
 
+
+
+@dataclass(frozen=True)
+class CalendarOutcome:
+    status: Literal["created", "skipped", "review"]
+    title: str | None = None
+    date: date | None = None
+    reason: str | None = None
+
+
+def calendar_step(
+    rule: Rule,
+    message: Message,
+    provider: Provider,
+    calendar,
+    state: State,
+    now: datetime,
+    dry_run: bool,
+) -> CalendarOutcome:
+    """Create (or recognise) the all-day event for one calendar_event match.
+
+    AuthError propagates; every other failure is a `review` outcome with a reason.
+    """
+    try:
+        body = provider.get_body(message.id)
+    except (TransientError, httpx.HTTPError, ValueError) as exc:
+        return CalendarOutcome("review", reason=f"body: {exc}")
+    try:
+        spec = build_event(rule, message, body)
+    except NoDate as exc:
+        return CalendarOutcome("review", reason=str(exc))
+    except ValueError as exc:
+        return CalendarOutcome("review", reason=f"body: {exc}")
+    if state.calendar_has(spec.title, spec.date):
+        return CalendarOutcome("skipped", spec.title, spec.date)
+    try:
+        if calendar.find(spec.title, spec.date):
+            if not dry_run:
+                state.calendar_add(spec.title, spec.date, message.id, message.account, now)
+            return CalendarOutcome("skipped", spec.title, spec.date)
+        if dry_run:
+            return CalendarOutcome("created", spec.title, spec.date, "dry-run")
+        calendar.create_all_day(spec)
+    except AuthError:
+        raise
+    except (TransientError, httpx.HTTPError, ValueError) as exc:
+        return CalendarOutcome("review", spec.title, spec.date, f"graph: {exc}")
+    state.calendar_add(spec.title, spec.date, message.id, message.account, now)
+    return CalendarOutcome("created", spec.title, spec.date)
