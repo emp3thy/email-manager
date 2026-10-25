@@ -126,7 +126,8 @@ one. If no date can be read, or the calendar is unavailable, the message is coun
 "needs calendar review" instead.
 
 On the first run after the feature is enabled, a one-off backfill scans the last 14 days of mail
-for `calendar_event` matches.
+for `calendar_event` matches. It creates no event dated before today, and if an account's
+authentication fails during it the backfill is tried again on the next run.
 
 ### Re-consent (one-off)
 
@@ -137,7 +138,7 @@ The relay now requests the `Calendars.ReadWrite` scope. To grant it:
 
 After pulling this change, run `python -m relay authorize` then `python -m relay refresh`, and confirm the saved document's `scope` (in `~/.config/email-manager/outlook-token.json`) now contains `Calendars.ReadWrite`; the periodic refresh asks only for that saved scope, so mail keeps flowing on the old consent until then.
 
-Until then the digest shows `⚠️ Calendar needs re-authorising: add Calendars.ReadWrite and run python -m relay authorize`.
+Until you re-consent, the digest shows `⚠️ Calendar needs re-authorising: add Calendars.ReadWrite and run python -m relay authorize`.
 
 ### Digest lines
 
@@ -145,6 +146,9 @@ Until then the digest shows `⚠️ Calendar needs re-authorising: add Calendars
   (`📅 Would create: …` on a dry run).
 - `📅 Already in calendar: N`: matches that already had an event.
 - `🕒 Needs calendar review: N`: no date found, or calendar unavailable.
+
+The `⚠️ Calendar needs re-authorising` warning repeats at most every six hours: on its own it
+triggers a digest only once per six hours (it still appears in any digest sent for another reason).
 
 ## Running under NanoClaw
 

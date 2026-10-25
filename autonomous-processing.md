@@ -84,7 +84,7 @@ For each target account (default: both Gmail and Outlook; the scheduler may narr
    | `keep` | add `em/<category>` label | `mark-as-read`, leave in Inbox |
    | `archive` | add label, remove `INBOX` | `move-emails` → `em-<category>` folder |
    | `trash` | add label **+ `em/held`**, leave in Inbox (no delete) | add nothing, `mark-as-read`, leave in Inbox (no move) — list under "held" |
-   | `calendar_event` | add label / mark read, create an all-day Outlook event on the extracted date; counted as needs-calendar-review when no date can be read or the calendar is unavailable | add label / mark read, create an all-day Outlook event on the extracted date; counted as needs-calendar-review when no date can be read or the calendar is unavailable |
+   | `calendar_event` | add label, create all-day Outlook event; review when no date | mark read, create all-day Outlook event; review when no date |
    | unmatched | add `em/review` label | `mark-as-read`, leave in Inbox |
 
 6. **Retention/auto-archive is skipped** in autonomous mode (it can move aged mail toward
