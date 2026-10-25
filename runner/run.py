@@ -16,7 +16,7 @@ from typing import Callable
 
 import httpx
 
-from .calendar import BodyAuthError, GraphCalendar, calendar_step
+from .calendar import LONDON, BodyAuthError, GraphCalendar, calendar_step
 from .policy import decide
 from .providers.base import AuthError, Provider, TransientError
 from .rules import Rule, match
@@ -109,13 +109,18 @@ def backfill_calendar(
 ) -> bool:
     """Once-only scan of the last BACKFILL_DAYS days for calendar_event matches.
 
-    Performs no mail operations. Returns False if the calendar became unusable
-    (its auth failed), so the caller must not use it for the rest of the run.
+    Performs no mail operations and creates no event dated before today. Stamps
+    the backfill done only after a complete pass: an account whose auth failed
+    is skipped for this run and leaves the backfill to be tried again next run.
+    Returns False if the calendar became unusable (its auth failed), so the
+    caller must not use it for the rest of the run.
     """
     cal_rules = [r for r in rules if r.action == "calendar_event"]
     seen = calendar_seen if calendar_seen is not None else set()
     start = now - timedelta(days=BACKFILL_DAYS)
+    today = now.astimezone(LONDON).date()
     calendar_ok = True
+    complete = True
     for account in cfg.accounts or state.accounts():
         provider = providers.get(account)
         if provider is None:
@@ -126,6 +131,7 @@ def backfill_calendar(
             _mark_auth(summary, account, exc)
             summary.errors.append(f"backfill: {account}: auth: {exc}")
             log.error("%s: backfill: authentication problem: %s", account, exc)
+            complete = False
             continue
         except Exception as exc:
             log.exception("backfill: %s listing failed", account)
@@ -136,11 +142,14 @@ def backfill_calendar(
             if rule is None:
                 continue
             try:
-                outcome = calendar_step(rule, message, provider, calendar, state, now, cfg.dry_run, seen)
+                outcome = calendar_step(
+                    rule, message, provider, calendar, state, now, cfg.dry_run, seen, skip_before=today
+                )
             except BodyAuthError as exc:
                 _mark_auth(summary, account, exc)
                 summary.errors.append(f"backfill: {account}: auth: {exc}")
                 log.error("%s: backfill: authentication lost fetching body: %s", account, exc)
+                complete = False
                 break
             except AuthError as exc:
                 summary.auth["calendar"] = "unauthorized"
@@ -152,7 +161,7 @@ def backfill_calendar(
                 summary.calendar_review += 1
                 return calendar_ok
             _record_outcome(summary, outcome, account)
-    if not cfg.dry_run:
+    if complete and not cfg.dry_run:
         state.mark_backfilled(now)
     return calendar_ok
 
