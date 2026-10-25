@@ -11,7 +11,7 @@ from .rules import Rule
 
 Op = tuple[str, str]
 
-BUCKETS = ("keep", "archive", "held", "calendar_review", "review")
+BUCKETS = ("keep", "archive", "held", "calendar", "review")
 PROVIDERS = ("gmail", "outlook")
 HELD_LABEL = "em/held"
 REVIEW_LABEL = "em/review"
@@ -52,7 +52,7 @@ def decide(rule: Rule | None, provider: str) -> Decision:
         bucket = "held"
     elif rule.action == "calendar_event":
         ops = (("add_label", label),) if gmail else (("mark_read", ""),)
-        bucket = "calendar_review"
+        bucket = "calendar"
     else:
         raise ValueError(f"unknown rule action {rule.action!r}")
     return Decision(ops=ops, bucket=bucket, label=label, important=important)

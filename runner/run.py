@@ -16,6 +16,7 @@ from typing import Callable
 
 import httpx
 
+from .calendar import GraphCalendar, calendar_step
 from .policy import decide
 from .providers.base import AuthError, Provider, TransientError
 from .rules import Rule, match
@@ -61,6 +62,8 @@ class Summary:
     held: int = 0
     review: int = 0
     calendar_review: int = 0
+    calendar_created: list[dict] = field(default_factory=list)
+    calendar_skipped: int = 0
     errors: list[str] = field(default_factory=list)
     auth: dict[str, str] = field(default_factory=dict)
     connect_urls: dict[str, str] = field(default_factory=dict)
@@ -79,11 +82,15 @@ def run(
     state: State,
     rules: list[Rule],
     now: Callable[[], datetime] = utcnow,
+    calendar: GraphCalendar | None = None,
 ) -> Summary:
+    if calendar is None:  # built before the budget clock starts: httpx.Client setup is not free
+        calendar = GraphCalendar(client=getattr(providers.get("outlook"), "client", None))
     started = now()
     deadline = time.monotonic() + cfg.budget_seconds
     summary = Summary(started=_iso(started), finished=_iso(started), dry_run=cfg.dry_run, accounts={})
     accounts = cfg.accounts or state.accounts()
+    calendar_ok = True
 
     for account in accounts:
         provider = providers.get(account)
@@ -154,8 +161,27 @@ def run(
                 summary.held += 1
             elif decision.bucket == "review":
                 summary.review += 1
-            elif decision.bucket == "calendar_review":
-                summary.calendar_review += 1
+            elif decision.bucket == "calendar":
+                if not calendar_ok:
+                    summary.calendar_review += 1
+                else:
+                    try:
+                        outcome = calendar_step(rule, message, provider, calendar, state, now(), cfg.dry_run)
+                    except AuthError as exc:
+                        calendar_ok = False
+                        summary.auth["calendar"] = "unauthorized"
+                        summary.calendar_review += 1
+                        log.error("calendar: authentication problem: %s", exc)
+                    else:
+                        if outcome.status == "created":
+                            summary.calendar_created.append(
+                                {"title": outcome.title, "date": outcome.date.isoformat(), "account": account}
+                            )
+                        elif outcome.status == "skipped":
+                            summary.calendar_skipped += 1
+                        else:
+                            summary.calendar_review += 1
+                            log.warning("%s: calendar review for %s: %s", account, message.id, outcome.reason)
             if decision.important:
                 summary.important.append({"account": account, "from": message.sender_display(), "subject": message.subject})
             # Advance only while every earlier message in this window succeeded: once an
