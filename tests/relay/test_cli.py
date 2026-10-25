@@ -15,7 +15,7 @@ def cfgdir(tmp_path):
 
 
 def test_refresh_success_saves_rotated_token_and_secret_id(cfgdir, monkeypatch):
-    monkeypatch.setattr(cli.ms, "refresh", lambda cfg, rt, client=None: {"access_token": "at2", "refresh_token": "rt2", "expires_in": 3599})
+    monkeypatch.setattr(cli.ms, "refresh", lambda cfg, rt, scope=None, client=None: {"access_token": "at2", "refresh_token": "rt2", "expires_in": 3599})
     monkeypatch.setattr(cli.onecli, "upsert_secret", lambda value, sid, run=None: "sec-1")
     rc = cli.main(["refresh", "--config-dir", str(cfgdir)])
     doc = json.loads((cfgdir / "outlook-token.json").read_text())
@@ -23,7 +23,7 @@ def test_refresh_success_saves_rotated_token_and_secret_id(cfgdir, monkeypatch):
 
 
 def test_refresh_saves_rotated_token_even_if_onecli_fails_and_exits_1(cfgdir, monkeypatch, capsys):
-    monkeypatch.setattr(cli.ms, "refresh", lambda cfg, rt, client=None: {"access_token": "at2", "refresh_token": "rt2", "expires_in": 3599})
+    monkeypatch.setattr(cli.ms, "refresh", lambda cfg, rt, scope=None, client=None: {"access_token": "at2", "refresh_token": "rt2", "expires_in": 3599})
 
     def boom(value, sid, run=None):
         raise OneCliError("gateway down")
@@ -42,7 +42,7 @@ def test_refresh_without_token_file_exits_1_with_hint(tmp_path, monkeypatch, cap
 
 
 def test_refresh_microsoft_failure_keeps_file_and_exits_1(cfgdir, monkeypatch, capsys):
-    def fail(cfg, rt, client=None):
+    def fail(cfg, rt, scope=None, client=None):
         raise RelayError("invalid_grant", "AADSTS70000: expired")
 
     monkeypatch.setattr(cli.ms, "refresh", fail)
@@ -56,3 +56,16 @@ def test_status_reports_without_secrets(cfgdir, capsys):
     rc = cli.main(["status", "--config-dir", str(cfgdir)])
     out = capsys.readouterr().out
     assert rc == 0 and "rt1" not in out and "sec" not in out.replace("secret", "") and "refresh token" in out.lower()
+
+
+def test_refresh_asks_for_the_saved_scope(cfgdir, monkeypatch):
+    seen = {}
+
+    def fake_refresh(cfg, rt, scope=None, client=None):
+        seen["scope"] = scope
+        return {"access_token": "at2", "refresh_token": "rt2", "expires_in": 3599, "scope": "s"}
+
+    monkeypatch.setattr(cli.ms, "refresh", fake_refresh)
+    monkeypatch.setattr(cli.onecli, "upsert_secret", lambda value, sid, run=None: "sec-1")
+    rc = cli.main(["refresh", "--config-dir", str(cfgdir)])
+    assert rc == 0 and seen["scope"] == "s"

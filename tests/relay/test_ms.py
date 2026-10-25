@@ -19,8 +19,31 @@ def test_refresh_posts_refresh_grant_and_returns_rotated_token(respx_mock):
     )
     out = refresh(CFG, "rt1", client=httpx.Client())
     form = dict(urllib.parse.parse_qsl(route.calls[0].request.read().decode()))
-    assert form == {"client_id": "cid-123", "client_secret": "sec-456", "grant_type": "refresh_token", "refresh_token": "rt1", "scope": SCOPES}
+    assert form == {"client_id": "cid-123", "client_secret": "sec-456", "grant_type": "refresh_token", "refresh_token": "rt1"}
     assert out["access_token"] == "at2" and out["refresh_token"] == "rt2" and out["expires_in"] == 3599
+
+
+@respx.mock
+def test_refresh_with_saved_scope_sends_exactly_that_scope(respx_mock):
+    saved = "https://graph.microsoft.com/Mail.ReadWrite https://graph.microsoft.com/User.Read"
+    route = respx_mock.post(token_url(CFG)).mock(
+        return_value=httpx.Response(200, json={"access_token": "at2", "refresh_token": "rt2", "expires_in": 3599, "scope": saved})
+    )
+    refresh(CFG, "rt1", scope=saved, client=httpx.Client())
+    form = dict(urllib.parse.parse_qsl(route.calls[0].request.read().decode()))
+    assert form["scope"] == saved
+    assert "Calendars.ReadWrite" not in form["scope"]
+
+
+@pytest.mark.parametrize("scope", [None, ""])
+@respx.mock
+def test_refresh_without_saved_scope_sends_no_scope_field(respx_mock, scope):
+    route = respx_mock.post(token_url(CFG)).mock(
+        return_value=httpx.Response(200, json={"access_token": "at2", "refresh_token": "rt2", "expires_in": 3599})
+    )
+    refresh(CFG, "rt1", scope=scope, client=httpx.Client())
+    form = dict(urllib.parse.parse_qsl(route.calls[0].request.read().decode()))
+    assert "scope" not in form
 
 
 @respx.mock

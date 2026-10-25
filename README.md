@@ -135,6 +135,8 @@ The relay now requests the `Calendars.ReadWrite` scope. To grant it:
 1. In the Azure app registration, add the delegated permission `Calendars.ReadWrite`.
 2. On the host run `python -m relay authorize`, then `python -m relay refresh`.
 
+After pulling this change, run `python -m relay authorize` then `python -m relay refresh`, and confirm the saved document's `scope` (in `~/.config/email-manager/outlook-token.json`) now contains `Calendars.ReadWrite`; the periodic refresh asks only for that saved scope, so mail keeps flowing on the old consent until then.
+
 Until then the digest shows `⚠️ Calendar needs re-authorising: add Calendars.ReadWrite and run python -m relay authorize`.
 
 ### Digest lines
