@@ -270,10 +270,13 @@ def calendar_step(
     now: datetime,
     dry_run: bool,
     seen: set | None = None,
+    skip_before: date | None = None,
 ) -> CalendarOutcome:
     """Create (or recognise) the all-day event for one calendar_event match.
 
     AuthError propagates; every other failure is a `review` outcome with a reason.
+    An event dated before ``skip_before`` (the backfill passes today) is `skipped`
+    with reason "past", touching neither the calendar nor the state.
     """
     try:
         body = provider.get_body(message.id)
@@ -287,6 +290,8 @@ def calendar_step(
         return CalendarOutcome("review", reason=str(exc))
     except ValueError as exc:
         return CalendarOutcome("review", reason=f"body: {exc}")
+    if skip_before is not None and spec.date < skip_before:
+        return CalendarOutcome("skipped", spec.title, spec.date, "past")
     if state.calendar_has(spec.title, spec.date):
         return CalendarOutcome("skipped", spec.title, spec.date)
     key = (spec.title.casefold().strip(), spec.date)
