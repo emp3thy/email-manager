@@ -16,12 +16,16 @@ class FakeProvider:
         fail_ops: set[str] | None = None,
         auth_error: AuthError | None = None,
         delay: float = 0.0,
+        bodies: dict[str, str] | None = None,
     ):
         self.name = name
         self.messages = list(messages or [])
         self.fail_ops = set(fail_ops or ())
         self.auth_error = auth_error
         self.delay = delay
+        self.bodies = dict(bodies or {})
+        self.body_calls: list[str] = []
+        self.candidate_calls: list[tuple[datetime, int]] = []
         self.applied: list[tuple[str, Op]] = []
         self.list_calls: list[tuple[datetime, int]] = []
         self.ensure_calls = 0
@@ -40,6 +44,18 @@ class FakeProvider:
         window = sorted((m for m in self.messages if m.received > start), key=lambda m: m.received)
         self.truncated = self.force_truncated or len(window) > limit
         return window[:limit]
+
+    def get_body(self, message_id: str) -> str:
+        self.body_calls.append(message_id)
+        if message_id not in self.bodies:
+            raise TransientError("no body")
+        return self.bodies[message_id]
+
+    def list_calendar_candidates(self, start: datetime, limit: int) -> list[Message]:
+        self.candidate_calls.append((start, limit))
+        if self.auth_error:
+            raise self.auth_error
+        return sorted((m for m in self.messages if m.received > start), key=lambda m: m.received)[:limit]
 
     def apply(self, message_id: str, op: Op) -> None:
         if self.delay:
