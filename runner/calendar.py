@@ -4,11 +4,19 @@ from __future__ import annotations
 
 import calendar
 import re
+import time
+from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Callable
 from zoneinfo import ZoneInfo
 
-from .rules import EXTRACTOR_NAMES
+import httpx
+
+from .models import Message
+from .providers.base import request_with_retry
+from .rules import EXTRACTOR_NAMES, Rule
+
+BASE = "https://graph.microsoft.com/v1.0/me"
 
 LONDON = ZoneInfo("Europe/London")
 AHEAD_DAYS = 60
@@ -139,3 +147,92 @@ _FUNCS: dict[str, Callable[[str, date], date]] = {
     "arriving": extract_arriving,
 }
 EXTRACTORS: dict[str, Callable[[str, date], date]] = {name: _FUNCS[name] for name in EXTRACTOR_NAMES}
+
+
+@dataclass(frozen=True)
+class EventSpec:
+    title: str
+    date: date
+    note: str
+
+
+_QUOTES = " \t\"'\u2018\u2019\u201c\u201d"
+_ORDERED_RE = re.compile(r"^\s*ordered\b:?", re.I)
+_TITLE_MAX = 60
+
+
+def _trim_ellipsis(text: str) -> str:
+    return text.rstrip().removesuffix("...").removesuffix("…").rstrip()
+
+
+def derive_title(rule: Rule, message: Message) -> str:
+    if rule.calendar_title:
+        return rule.calendar_title
+    text = _ORDERED_RE.sub("", message.subject or "", count=1)
+    text = _collapse(text.strip(_QUOTES))
+    if len(text) > _TITLE_MAX:
+        cut = text[: _TITLE_MAX + 1]
+        text = cut[: cut.rfind(" ")] if " " in cut else cut[:_TITLE_MAX]
+    text = _trim_ellipsis(text)
+    return f"Amazon: {text}" if text else message.subject
+
+
+def _fmt_day(d: date) -> str:
+    return f"{d.day} {d:%b %Y}"
+
+
+def build_event(rule: Rule, message: Message, body: str) -> EventSpec:
+    received = message.received.astimezone(LONDON).date()
+    when = EXTRACTORS[rule.date_extractor](body, received)
+    note = f"From: {message.sender_display()} · {message.subject} · received {_fmt_day(received)}"
+    return EventSpec(derive_title(rule, message), when, note)
+
+
+class GraphCalendar:
+    def __init__(self, client: httpx.Client | None = None, sleep: Callable[[float], None] = time.sleep):
+        self.client = client or httpx.Client(timeout=30.0)
+        self.sleep = sleep
+
+    def _req(self, method: str, url: str, **kw) -> httpx.Response:
+        return request_with_retry(self.client, method, url, sleep=self.sleep, **kw)
+
+    def find(self, title: str, day: date) -> str | None:
+        want = title.casefold().strip()
+        params = {
+            "startDateTime": f"{day.isoformat()}T00:00:00",
+            "endDateTime": f"{(day + timedelta(days=1)).isoformat()}T00:00:00",
+            "$select": "id,subject",
+            "$top": 50,
+        }
+        headers = {"Prefer": 'outlook.timezone="Europe/London"'}
+        url: str | None = f"{BASE}/calendarView"
+        seen: set[str] = set()
+        first = True
+        while url:
+            page = self._req("GET", url, params=params if first else None, headers=headers).json()
+            first = False
+            added = 0
+            for item in page.get("value", []) or []:
+                if item["id"] in seen:
+                    continue
+                seen.add(item["id"])
+                added += 1
+                if (item.get("subject") or "").casefold().strip() == want:
+                    return item["id"]
+            if added == 0:
+                break  # a page that adds nothing new is a paging fault; never follow it again
+            url = page.get("@odata.nextLink")
+        return None
+
+    def create_all_day(self, spec: EventSpec) -> str:
+        payload = {
+            "subject": spec.title,
+            "isAllDay": True,
+            "showAs": "free",
+            "isReminderOn": False,
+            "start": {"dateTime": f"{spec.date.isoformat()}T00:00:00", "timeZone": "Europe/London"},
+            "end": {"dateTime": f"{(spec.date + timedelta(days=1)).isoformat()}T00:00:00", "timeZone": "Europe/London"},
+            "body": {"contentType": "text", "content": spec.note},
+        }
+        return self._req("POST", f"{BASE}/events", json=payload).json()["id"]
+
