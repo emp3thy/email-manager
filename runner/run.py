@@ -16,7 +16,7 @@ from typing import Callable
 
 import httpx
 
-from .calendar import GraphCalendar, calendar_step
+from .calendar import BodyAuthError, GraphCalendar, calendar_step
 from .policy import decide
 from .providers.base import AuthError, Provider, TransientError
 from .rules import Rule, match
@@ -91,6 +91,7 @@ def run(
     summary = Summary(started=_iso(started), finished=_iso(started), dry_run=cfg.dry_run, accounts={})
     accounts = cfg.accounts or state.accounts()
     calendar_ok = True
+    calendar_seen: set = set()
 
     for account in accounts:
         provider = providers.get(account)
@@ -166,12 +167,23 @@ def run(
                     summary.calendar_review += 1
                 else:
                     try:
-                        outcome = calendar_step(rule, message, provider, calendar, state, now(), cfg.dry_run)
+                        outcome = calendar_step(rule, message, provider, calendar, state, now(), cfg.dry_run, calendar_seen)
+                    except BodyAuthError as exc:
+                        summary.auth[account] = "not_connected" if exc.connect_url else "unauthorized"
+                        if exc.connect_url:
+                            summary.connect_urls[account] = exc.connect_url
+                        log.error("%s: authentication lost fetching body: %s", account, exc)
+                        clean = False
+                        break
                     except AuthError as exc:
                         calendar_ok = False
                         summary.auth["calendar"] = "unauthorized"
                         summary.calendar_review += 1
                         log.error("calendar: authentication problem: %s", exc)
+                    except Exception as exc:  # never let the calendar take down the mail run
+                        log.exception("%s: calendar step failed on %s", account, message.id)
+                        summary.errors.append(f"{account}: calendar {message.id}: {exc}")
+                        summary.calendar_review += 1
                     else:
                         if outcome.status == "created":
                             summary.calendar_created.append(
