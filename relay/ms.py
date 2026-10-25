@@ -14,7 +14,7 @@ import httpx
 
 from .config import RelayConfig
 
-SCOPES = "offline_access User.Read Mail.ReadWrite"
+SCOPES = "offline_access User.Read Mail.ReadWrite Calendars.ReadWrite"
 REDIRECT_URI = "http://localhost:3333/auth/callback"
 CALLBACK_PATH = "/auth/callback"
 

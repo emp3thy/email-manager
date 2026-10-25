@@ -59,3 +59,7 @@ def test_authorize_builds_pkce_url_and_exchanges_code(respx_mock):
     assert form["grant_type"] == "authorization_code" and form["code"] == "the-code"
     assert form["redirect_uri"] == REDIRECT_URI and len(form["code_verifier"]) >= 43
     assert out["refresh_token"] == "rt"
+
+
+def test_relay_scopes_include_calendar():
+    assert "Calendars.ReadWrite" in SCOPES
