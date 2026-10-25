@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from runner.state import State
 
@@ -91,3 +91,46 @@ def test_existing_documented_shape_is_preserved(tmp_path):
     assert again["accounts"]["gmail"]["initial_cleanup"] == DOCUMENTED["accounts"]["gmail"]["initial_cleanup"]
     assert again["autonomous"]["heartbeat"] is False
     assert again["autonomous"]["last_reported"] == {}
+
+
+def test_calendar_add_and_has_casefold(tmp_path):
+    s = State.load(tmp_path / "state.json")
+    d = date(2026, 11, 3)
+    assert not s.calendar_has("Amex Payment Due", d)
+    s.calendar_add("Amex Payment Due", d, "m1", "outlook", NOW)
+    assert s.calendar_has(" amex payment due ", d)
+    assert not s.calendar_has("Amex Payment Due", d + timedelta(days=1))
+
+
+def test_calendar_entries_persist_and_trim_90_days(tmp_path):
+    p = tmp_path / "state.json"
+    s = State.load(p)
+    s.calendar_add("Old", NOW.date() - timedelta(days=100), "m1", "gmail", NOW)
+    s.calendar_add("Today", NOW.date(), "m2", "gmail", NOW)
+    s.save()
+    again = State.load(p)
+    assert not again.calendar_has("Old", NOW.date() - timedelta(days=100))
+    assert again.calendar_has("Today", NOW.date())
+    entry = json.loads(p.read_text())["calendar"]["created"]
+    assert entry == [{"title": "Today", "date": "2026-10-24", "message_id": "m2",
+                      "account": "gmail", "created_at": "2026-10-24T12:00:00Z"}]
+
+
+def test_backfilled_stamp(tmp_path):
+    p = tmp_path / "state.json"
+    s = State.load(p)
+    assert s.calendar_backfilled_at() is None
+    s.mark_backfilled(NOW)
+    s.save()
+    assert json.loads(p.read_text())["calendar"]["backfilled_at"] == "2026-10-24T12:00:00Z"
+    assert State.load(p).calendar_backfilled_at() == NOW
+
+
+def test_old_state_file_gains_calendar_block(tmp_path):
+    p = tmp_path / "state.json"
+    p.write_text(json.dumps(DOCUMENTED))
+    s = State.load(p)
+    assert s.calendar_has("x", NOW.date()) is False
+    assert s.calendar_backfilled_at() is None
+    s.calendar_add("x", NOW.date(), "m", "gmail", NOW)
+    assert s.calendar_has("x", NOW.date())

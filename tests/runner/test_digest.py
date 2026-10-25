@@ -99,3 +99,50 @@ def test_auth_condition_suppressed_within_six_hours(tmp_path):
     assert decide_verdict(s, state, NOW + timedelta(hours=7)) == "REPORT"
     # other triggers still report even while the auth line is suppressed
     assert decide_verdict(summary(held=1, auth={"gmail": "ok", "outlook": "unauthorized"}), state, NOW + timedelta(hours=8)) == "REPORT"
+
+
+CREATED = [
+    {"title": "Amex Payment Due", "date": "2026-10-30", "account": "outlook"},
+    {"title": "Amazon: Charger Cable for Fitbit", "date": "2026-10-26", "account": "gmail"},
+]
+
+
+def test_digest_calendar_lines():
+    text = render(summary(calendar_created=CREATED, calendar_skipped=1, calendar_review=2))
+    assert text == (
+        "📬 Email run 19:00\n"
+        "Processed: 12 (Gmail 9, Outlook 3)\n"
+        "📅 Calendar: Amex Payment Due 30 Oct, Amazon: Charger Cable for Fitbit 26 Oct\n"
+        "📅 Already in calendar: 1\n"
+        "🕒 Needs calendar review: 2"
+    )
+
+
+def test_digest_dry_run_wording():
+    text = render(summary(dry_run=True, calendar_created=CREATED[:1]))
+    assert "📅 Would create: Amex Payment Due 30 Oct" in text.splitlines()
+
+
+def test_digest_calendar_day_has_no_leading_zero():
+    text = render(summary(calendar_created=[{"title": "X", "date": "2026-11-05", "account": "gmail"}]))
+    assert "📅 Calendar: X 5 Nov" in text.splitlines()
+
+
+def test_digest_calendar_auth_warning():
+    text = render(summary(auth={"gmail": "ok", "outlook": "ok", "calendar": "unauthorized"}))
+    assert text.splitlines()[-1] == (
+        "⚠️ Calendar needs re-authorising: add Calendars.ReadWrite and run python -m relay authorize"
+    )
+    assert "authentication failed" not in text
+
+
+def test_verdict_reports_created_events(tmp_path):
+    s = summary(calendar_created=CREATED)
+    assert decide_verdict(s, State.load(tmp_path / "s.json"), NOW) == "REPORT"
+
+
+def test_verdict_calendar_auth_suppressed_six_hours(tmp_path):
+    s = summary(auth={"gmail": "ok", "outlook": "ok", "calendar": "unauthorized"})
+    state = State.load(tmp_path / "s.json")
+    assert decide_verdict(s, state, NOW) == "REPORT"
+    assert decide_verdict(s, state, NOW + timedelta(hours=2)) == "QUIET"

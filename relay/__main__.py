@@ -44,7 +44,7 @@ def cmd_refresh(cfg) -> int:
         print(f"no refresh token at {cfg.token_path}; run `python -m relay authorize` first", file=sys.stderr)
         return 1
     try:
-        tokens = ms.refresh(cfg, doc["refresh_token"])
+        tokens = ms.refresh(cfg, doc["refresh_token"], scope=doc.get("scope"))
     except ms.RelayError as exc:
         print(f"token refresh failed: {exc}", file=sys.stderr)
         return 1

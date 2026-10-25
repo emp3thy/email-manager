@@ -109,6 +109,47 @@ chat by default (no phone number is stored). Runs only while your machine is on 
 24/7 you'd host the MCP servers on an always-on box. See the scheduler-script comments for how
 tool permissions are handled in headless runs.
 
+## Calendar events
+
+Rules with `action: calendar_event` (five at present: the three Amex payment rules, the M&S
+Credit Card payment rule, and the Amazon arriving rule) create an all-day event in the Outlook
+calendar. Each such rule uses:
+
+- `date_extractor`: `pay_by` (the pay-by / due date in the message) or `arriving` (the
+  arriving / delivery-estimate date).
+- `calendar_title`: a fixed event title, e.g. `Amex Payment Due`.
+- `calendar_title_from`: set to `subject` to use the message subject as the title instead.
+
+Events are all-day Outlook events on the extracted date. Duplicates are avoided twice: the runner
+state remembers what it created, and it also looks the event up in the calendar before creating
+one. If no date can be read, or the calendar is unavailable, the message is counted as
+"needs calendar review" instead.
+
+On the first run after the feature is enabled, a one-off backfill scans the last 14 days of mail
+for `calendar_event` matches. It creates no event dated before today, and if an account's
+authentication fails during it the backfill is tried again on the next run.
+
+### Re-consent (one-off)
+
+The relay now requests the `Calendars.ReadWrite` scope. To grant it:
+
+1. In the Azure app registration, add the delegated permission `Calendars.ReadWrite`.
+2. On the host run `python -m relay authorize`, then `python -m relay refresh`.
+
+After pulling this change, run `python -m relay authorize` then `python -m relay refresh`, and confirm the saved document's `scope` (in `~/.config/email-manager/outlook-token.json`) now contains `Calendars.ReadWrite`; the periodic refresh asks only for that saved scope, so mail keeps flowing on the old consent until then.
+
+Until you re-consent, the digest shows `⚠️ Calendar needs re-authorising: add Calendars.ReadWrite and run python -m relay authorize`.
+
+### Digest lines
+
+- `📅 Calendar: Amex Payment Due 30 Oct, Amazon: Charger Cable for Fitbit 26 Oct`: events created
+  (`📅 Would create: …` on a dry run).
+- `📅 Already in calendar: N`: matches that already had an event.
+- `🕒 Needs calendar review: N`: no date found, or calendar unavailable.
+
+The `⚠️ Calendar needs re-authorising` warning repeats at most every six hours: on its own it
+triggers a digest only once per six hours (it still appears in any digest sent for another reason).
+
 ## Running under NanoClaw
 
 The current always-on setup does not use the scheduler, the MCP servers or the WhatsApp

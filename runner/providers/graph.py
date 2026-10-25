@@ -8,7 +8,7 @@ from typing import Callable
 import httpx
 
 from ..models import Message
-from .base import Op, request_with_retry
+from .base import Op, collapse_ws, html_to_text, request_with_retry
 
 BASE = "https://graph.microsoft.com/v1.0/me"
 EM_FOLDERS = ("em-important", "em-newsletters", "em-notifications", "em-promotions", "em-receipts")
@@ -60,9 +60,33 @@ class GraphProvider:
 
     def list_since(self, start: datetime, limit: int) -> list[Message]:
         self._folder_map()
+        return self._list_inbox(f"receivedDateTime ge {_iso_z(start)} and isRead eq false", limit)
+
+    def list_calendar_candidates(self, start: datetime, limit: int) -> list[Message]:
+        """Newest `limit` inbox messages from `start` (oldest first), read or not. Leaves `truncated` untouched."""
+        saved = self.truncated
+        try:
+            return self._list_inbox(f"receivedDateTime ge {_iso_z(start)}", limit, newest_first=True)
+        finally:
+            self.truncated = saved
+
+    def get_body(self, message_id: str) -> str:
+        resp = self._req(
+            "GET",
+            f"{BASE}/messages/{message_id}",
+            params={"$select": "body"},
+            headers={"Prefer": 'outlook.body-content-type="text"'},
+        )
+        body = resp.json().get("body") or {}
+        content = body.get("content") or ""
+        if (body.get("contentType") or "").lower() == "html":
+            return html_to_text(content)
+        return collapse_ws(content)
+
+    def _list_inbox(self, filter_expr: str, limit: int, newest_first: bool = False) -> list[Message]:
         params = {
-            "$filter": f"receivedDateTime ge {_iso_z(start)} and isRead eq false",
-            "$orderby": "receivedDateTime asc",
+            "$filter": filter_expr,
+            "$orderby": "receivedDateTime desc" if newest_first else "receivedDateTime asc",
             "$top": PAGE_SIZE,
             "$select": SELECT,
         }
