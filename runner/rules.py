@@ -16,6 +16,7 @@ import yaml
 from .models import Message
 
 ACTIONS = ("keep", "archive", "trash", "calendar_event")
+EXTRACTOR_NAMES = ("pay_by", "arriving")
 FIELDS = ("sender", "subject", "header")
 # Every label the runner knows how to apply. Gmail creates these as labels; Outlook has a
 # folder only for the first five (`em/x` -> `em-x`), so an `archive` rule must use one of those.
@@ -44,6 +45,9 @@ class Rule:
     action: str
     header_name: str | None = None
     sender_pattern: str | None = None
+    date_extractor: str | None = None
+    calendar_title: str | None = None
+    calendar_title_from: str | None = None
 
 
 def glob_match(pattern: str, value: str) -> bool:
@@ -75,6 +79,19 @@ def load_rules(path: Path) -> list[Rule]:
             raise RulesError(f"{path}: rule #{i + 1} has unknown label {raw['label']!r} (known: {', '.join(LABELS)})")
         if raw["action"] == "archive" and str(raw["label"]) not in ARCHIVABLE_LABELS:
             raise RulesError(f"{path}: rule #{i + 1} archives to {raw['label']!r}, which has no Outlook folder")
+        date_extractor = calendar_title = calendar_title_from = None
+        if raw["action"] == "calendar_event":
+            if raw.get("date_extractor") not in EXTRACTOR_NAMES:
+                raise RulesError(f"{path}: rule #{i + 1} needs date_extractor ({'|'.join(EXTRACTOR_NAMES)})")
+            if not raw.get("calendar_title") and not raw.get("calendar_title_from"):
+                raise RulesError(f"{path}: rule #{i + 1} needs calendar_title or calendar_title_from")
+            if raw.get("calendar_title_from") not in (None, "subject"):
+                raise RulesError(
+                    f"{path}: rule #{i + 1} has unknown calendar_title_from {raw['calendar_title_from']!r}"
+                )
+            date_extractor = raw["date_extractor"]
+            calendar_title = str(raw["calendar_title"]) if raw.get("calendar_title") else None
+            calendar_title_from = raw.get("calendar_title_from")
         rules.append(
             Rule(
                 pattern=str(raw["pattern"]),
@@ -83,6 +100,9 @@ def load_rules(path: Path) -> list[Rule]:
                 action=raw["action"],
                 header_name=str(header_name) if header_name else None,
                 sender_pattern=str(raw["sender_pattern"]) if raw.get("sender_pattern") else None,
+                date_extractor=date_extractor,
+                calendar_title=calendar_title,
+                calendar_title_from=calendar_title_from,
             )
         )
     return rules
