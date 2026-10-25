@@ -110,3 +110,33 @@ def test_backfill_window_is_14_days(tmp_path, msg):
     p = FakeProvider("outlook", [amex(msg)], bodies={"a1": AMEX})
     go(tmp_path, p)
     assert p.candidate_calls[0][0] == NOW - timedelta(days=14)
+
+
+def test_backfill_auth_mark_is_cleared_by_successful_main_loop(tmp_path, msg):
+    class AuthOnCandidates(FakeProvider):
+        def list_calendar_candidates(self, start, limit):
+            raise AuthError("401")
+
+    p = AuthOnCandidates("outlook", [])
+    s, _, _ = go(tmp_path, p)
+    assert s.auth["outlook"] == "ok"
+    assert len([e for e in s.errors if e.startswith("backfill: outlook:")]) == 1
+
+
+def test_first_run_overlap_creates_once(tmp_path, msg):
+    m = msg(id="o1", account="outlook", sender="amex@card.example", subject="Payment due",
+            received=NOW - timedelta(minutes=30))
+    p = FakeProvider("outlook", [m], bodies={"o1": AMEX})
+    s, state, cal = go(tmp_path, p)
+    assert len(cal.created) == 1 and len(s.calendar_created) == 1
+    assert s.calendar_skipped == 1
+    assert state.calendar_has("Amex Payment Due", datetime(2026, 10, 30).date())
+    assert state.calendar_backfilled_at() == NOW
+
+
+def test_backfill_calendar_step_exception_counts_review_and_does_not_stamp(tmp_path, msg):
+    p = FakeProvider("outlook", [amex(msg)], bodies={"a1": AMEX})
+    s, state, _ = go(tmp_path, p, cal=FakeCalendar(fail=KeyError("id")))
+    assert s.calendar_review >= 1
+    assert any(e.startswith("backfill: outlook:") for e in s.errors)
+    assert state.calendar_backfilled_at() is None
