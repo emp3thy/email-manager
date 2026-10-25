@@ -51,19 +51,26 @@ def _post_token(cfg: RelayConfig, data: dict, client: httpx.Client | None) -> di
     return body
 
 
-def refresh(cfg: RelayConfig, refresh_token: str, client: httpx.Client | None = None) -> dict:
-    """Exchange a refresh token; the returned document carries the rotated refresh token."""
-    body = _post_token(
-        cfg,
-        {
-            "client_id": cfg.client_id,
-            "client_secret": cfg.client_secret,
-            "grant_type": "refresh_token",
-            "refresh_token": refresh_token,
-            "scope": SCOPES,
-        },
-        client,
-    )
+def refresh(
+    cfg: RelayConfig, refresh_token: str, scope: str | None = None, client: httpx.Client | None = None
+) -> dict:
+    """Exchange a refresh token; the returned document carries the rotated refresh token.
+
+    ``scope`` is the scope saved at the last authorize/refresh. It is sent only
+    when given: asking for more than the user consented to (for instance after
+    SCOPES gains a permission) makes Microsoft reject the refresh, so the
+    refresh never requests SCOPES itself. Without a scope the token keeps the
+    permissions it was granted.
+    """
+    data = {
+        "client_id": cfg.client_id,
+        "client_secret": cfg.client_secret,
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_token,
+    }
+    if scope:
+        data["scope"] = scope
+    body = _post_token(cfg, data, client)
     if not body.get("access_token"):
         raise RelayError("no_access_token", "token endpoint returned no access_token")
     return {
