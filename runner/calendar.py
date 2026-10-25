@@ -94,24 +94,20 @@ def _check_range(found: date, received: date) -> date:
 
 
 def _first_date(phrases: re.Pattern, text: str, received: date, resolve: Callable[[str, date], date | None]) -> date:
-    """Try each phrase match in position order; the first one that yields a date wins.
+    """Try each phrase match in position order; the first phrase that parses to a date wins.
 
-    An out-of-range date from an earlier phrase is reported only if no later phrase gives a date.
+    That date must lie between BEHIND_DAYS before and AHEAD_DAYS after `received`;
+    if it does not, NoDate("date out of range") is raised at once and later phrases
+    are not tried. NoDate("no date") if no phrase is followed by a date.
     """
     text = _collapse(text)
-    error = NoDate("no date")
     for m in phrases.finditer(text):
         rest = text[m.end():]
         rest = rest[_SKIP_RE.match(rest).end():]
-        try:
-            found = resolve(rest, received)
-        except NoDate as exc:
-            if str(error) == "no date":
-                error = exc
-            continue
+        found = resolve(rest, received)
         if found is not None:
             return _check_range(found, received)
-    raise error
+    raise NoDate("no date")
 
 
 def _resolve_token(rest: str, received: date, lookback: int) -> date | None:
