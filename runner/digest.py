@@ -1,7 +1,7 @@
 """Human digest text and the REPORT / QUIET verdict."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from zoneinfo import ZoneInfo
 
 from .run import Summary
@@ -18,6 +18,11 @@ def _local_hhmm(iso_utc: str, local_tz: str) -> str:
     return dt.astimezone(ZoneInfo(local_tz)).strftime("%H:%M")
 
 
+def _day_month(iso_date: str) -> str:
+    d = date.fromisoformat(iso_date)
+    return f"{d.day} {d.strftime('%b')}"
+
+
 def render(summary: Summary, local_tz: str = LOCAL_TZ) -> str:
     when = _local_hhmm(summary.started, local_tz)
     head = f"📬 Email run {when}" + (" (dry run)" if summary.dry_run else "")
@@ -27,6 +32,12 @@ def render(summary: Summary, local_tz: str = LOCAL_TZ) -> str:
     if capped:
         processed += f" — capped ({', '.join(capped)}); the rest is picked up next run"
     lines = [head, processed]
+    if summary.calendar_created:
+        label = "Would create" if summary.dry_run else "Calendar"
+        items = ", ".join(f"{c['title']} {_day_month(c['date'])}" for c in summary.calendar_created)
+        lines.append(f"📅 {label}: {items}")
+    if summary.calendar_skipped:
+        lines.append(f"📅 Already in calendar: {summary.calendar_skipped}")
     if summary.important:
         lines.append(f"⭐ Important: {len(summary.important)}")
         for item in summary.important:
@@ -44,7 +55,9 @@ def render(summary: Summary, local_tz: str = LOCAL_TZ) -> str:
         if status == "ok":
             continue
         name = DISPLAY_NAMES.get(account, account)
-        if account == "outlook":
+        if account == "calendar" and status == "unauthorized":
+            lines.append("⚠️ Calendar needs re-authorising: add Calendars.ReadWrite and run python -m relay authorize")
+        elif account == "outlook":
             lines.append(f"⚠️ {name} needs re-authorising: run `python -m relay authorize` on the host.")
         elif status == "not_connected" and summary.connect_urls.get(account):
             lines.append(f"⚠️ {name} not connected: {summary.connect_urls[account]}")
@@ -60,7 +73,7 @@ def render_error(started_iso: str, exc: BaseException, processed: int, local_tz:
 
 def decide_verdict(summary: Summary, state: State, now: datetime) -> str:
     """REPORT when there is something to say; auth problems re-report at most every six hours."""
-    report = bool(summary.important or summary.held or summary.review or summary.calendar_review or summary.errors)
+    report = bool(summary.important or summary.held or summary.review or summary.calendar_review or summary.calendar_created or summary.errors)
     for account, status in summary.auth.items():
         if status == "ok":
             continue
