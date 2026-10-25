@@ -124,6 +124,7 @@ def backfill_calendar(
             candidates = provider.list_calendar_candidates(start, cfg.max_messages)
         except AuthError as exc:
             _mark_auth(summary, account, exc)
+            summary.errors.append(f"backfill: {account}: auth: {exc}")
             log.error("%s: backfill: authentication problem: %s", account, exc)
             continue
         except Exception as exc:
@@ -138,6 +139,7 @@ def backfill_calendar(
                 outcome = calendar_step(rule, message, provider, calendar, state, now, cfg.dry_run, seen)
             except BodyAuthError as exc:
                 _mark_auth(summary, account, exc)
+                summary.errors.append(f"backfill: {account}: auth: {exc}")
                 log.error("%s: backfill: authentication lost fetching body: %s", account, exc)
                 break
             except AuthError as exc:
@@ -147,6 +149,7 @@ def backfill_calendar(
             except Exception as exc:
                 log.exception("backfill: %s calendar step failed on %s", account, message.id)
                 summary.errors.append(f"backfill: {account}: {exc}")
+                summary.calendar_review += 1
                 return calendar_ok
             _record_outcome(summary, outcome, account)
     if not cfg.dry_run:
@@ -180,7 +183,7 @@ def run(
             continue
         stats = AccountStats()
         summary.accounts[account] = stats
-        summary.auth.setdefault(account, "ok")
+        summary.auth[account] = "ok"
         window_start = state.window_start(account, started)
         try:
             provider.ensure_labels()
