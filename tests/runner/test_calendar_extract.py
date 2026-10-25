@@ -83,3 +83,27 @@ def test_arriving_none():
 
 def test_extractors_registry():
     assert set(EXTRACTORS) == {"pay_by", "arriving"}
+
+
+@pytest.mark.parametrize("frag", ["Estimated delivery: 27 October", "Expected delivery 27 October"])
+def test_arriving_other_phrases(frag):
+    assert extract_arriving(frag, R) == date(2026, 10, 27)
+
+
+def test_pay_by_phrase_needs_word_boundary():
+    with pytest.raises(NoDate):
+        extract_pay_by("Your statement is due online. Posted 30 Oct 2026", R)
+
+
+def test_pay_by_overdue_by_is_not_a_phrase():
+    with pytest.raises(NoDate):
+        extract_pay_by("Account overdue by 30 Oct 2026", R)
+
+
+def test_pay_by_later_phrase_used_when_earlier_has_no_date():
+    assert extract_pay_by("Due date: see the statement attached to this email for details, thanks. Please pay by: 30 Oct 2026", R) == date(2026, 10, 30)
+
+
+def test_arriving_past_day_does_not_look_back():
+    with pytest.raises(NoDate, match="out of range"):
+        extract_arriving("Arriving 20 October", R)
