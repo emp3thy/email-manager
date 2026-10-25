@@ -91,14 +91,23 @@ def request_with_retry(
     method: str,
     url: str,
     sleep: Callable[[float], None] = time.sleep,
+    retry_transport: bool = True,
     **kw,
 ) -> httpx.Response:
-    """Issue a request; raise AuthError on 401/403, retry 429/5xx up to MAX_RETRIES."""
+    """Issue a request; raise AuthError on 401/403, retry 429/5xx up to MAX_RETRIES.
+
+    Transport errors (timeouts, dropped connections) are retried too, unless
+    ``retry_transport`` is False: then the httpx error is raised as is on the
+    first occurrence, so the caller of a non-idempotent request can check
+    whether it took effect before trying again.
+    """
     attempt = 0
     while True:
         try:
             resp = client.request(method, url, **kw)
         except httpx.HTTPError as exc:
+            if not retry_transport:
+                raise
             if attempt >= MAX_RETRIES:
                 raise TransientError(f"{method} {url}: {exc}") from exc
             attempt += 1

@@ -5,7 +5,7 @@ import httpx
 import pytest
 
 from runner.calendar import BASE, EventSpec, GraphCalendar, build_event, derive_title
-from runner.providers.base import AuthError
+from runner.providers.base import AuthError, TransientError, request_with_retry
 from runner.rules import Rule
 
 AMEX = "Payment due. Pay by Fri 30 Oct 2026 to avoid interest."
@@ -131,3 +131,34 @@ def test_build_event_uses_london_date_across_utc_midnight(msg):
     spec = build_event(AMEX_RULE, m, "Please pay by: 23 Sep 2026")
     assert spec.date == date(2026, 9, 23)
     assert spec.note.endswith("received 25 Jul 2026")
+
+
+def _read_timeout(request):
+    raise httpx.ReadTimeout("read timed out", request=request)
+
+
+def test_create_all_day_transport_error_recovers_event_via_find(respx_mock):
+    post = respx_mock.post(f"{BASE}/events").mock(side_effect=_read_timeout)
+    view = respx_mock.get(f"{BASE}/calendarView").respond(200, json={"value": [
+        {"id": "E7", "subject": "Amex Payment Due", "start": {"dateTime": "2026-10-30T00:00:00.0000000"}}]})
+    assert GraphCalendar(httpx.Client(), sleep=lambda s: None).create_all_day(SPEC) == "E7"
+    assert post.call_count == 1 and view.call_count == 1
+
+
+def test_create_all_day_transport_error_without_event_is_transient_and_not_reposted(respx_mock):
+    post = respx_mock.post(f"{BASE}/events").mock(side_effect=_read_timeout)
+    view = respx_mock.get(f"{BASE}/calendarView").respond(200, json={"value": []})
+    with pytest.raises(TransientError):
+        GraphCalendar(httpx.Client(), sleep=lambda s: None).create_all_day(SPEC)
+    assert post.call_count == 1 and view.call_count == 1
+
+
+def test_request_with_retry_transport_retry_default_and_opt_out(respx_mock):
+    route = respx_mock.get("https://example.test/x").mock(side_effect=_read_timeout)
+    with pytest.raises(TransientError):
+        request_with_retry(httpx.Client(), "GET", "https://example.test/x", sleep=lambda s: None)
+    assert route.call_count == 4  # default unchanged: first try + MAX_RETRIES
+    route.reset()
+    with pytest.raises(httpx.ReadTimeout):
+        request_with_retry(httpx.Client(), "GET", "https://example.test/x", sleep=lambda s: None, retry_transport=False)
+    assert route.call_count == 1
