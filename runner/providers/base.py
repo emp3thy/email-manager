@@ -5,6 +5,8 @@ goes through the OneCLI proxy, which injects the account's credential.
 """
 from __future__ import annotations
 
+import html
+import re
 import time
 from datetime import datetime
 from typing import Callable, Protocol
@@ -40,6 +42,20 @@ class Provider(Protocol):
     def list_since(self, start: datetime, limit: int) -> list[Message]: ...
 
     def apply(self, message_id: str, op: Op) -> None: ...
+
+    def get_body(self, message_id: str) -> str: ...
+
+    def list_calendar_candidates(self, start: datetime, limit: int) -> list[Message]: ...
+
+
+def collapse_ws(text: str) -> str:
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def html_to_text(markup: str) -> str:
+    """Plain text from HTML: drop style/script blocks, strip tags, unescape entities, collapse whitespace."""
+    markup = re.sub(r"(?is)<(style|script)\b.*?</\1\s*>", " ", markup)
+    return collapse_ws(html.unescape(re.sub(r"<[^>]+>", " ", markup)))
 
 
 def _auth_error_from(resp: httpx.Response) -> AuthError:
