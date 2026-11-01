@@ -224,25 +224,59 @@ class GraphCalendar:
         return None
 
     def create_all_day(self, spec: EventSpec) -> str:
-        payload = {
-            "subject": spec.title,
-            "isAllDay": True,
-            "showAs": "free",
-            "isReminderOn": False,
-            "start": {"dateTime": f"{spec.date.isoformat()}T00:00:00", "timeZone": "Europe/London"},
-            "end": {"dateTime": f"{(spec.date + timedelta(days=1)).isoformat()}T00:00:00", "timeZone": "Europe/London"},
-            "body": {"contentType": "text", "content": spec.note},
-        }
+        start = datetime.combine(spec.date, dtime(0), tzinfo=LONDON)
+        return self.create(NewEvent(spec.title, start, start + timedelta(days=1), all_day=True, note=spec.note))
+
+    def create(self, ev: NewEvent) -> str:
         # POST is the one non-idempotent call: a timeout may come after Graph committed the
         # event, so never resend it blindly. Look it up once instead.
         try:
-            resp = self._req("POST", f"{BASE}/events", json=payload, retry_transport=False)
+            resp = self._req("POST", f"{BASE}/events", json=event_payload(ev), retry_transport=False)
         except httpx.HTTPError as exc:
-            found = self.find(spec.title, spec.date)
+            found = self.find(ev.title, ev.start.date())
             if found:
                 return found
             raise TransientError(f"POST {BASE}/events: {exc}; event not found afterwards") from exc
         return resp.json()["id"]
+
+
+@dataclass(frozen=True)
+class NewEvent:
+    """An event to create: `start` and `end` are London wall-clock datetimes.
+
+    An all-day event runs from 00:00 on its day to 00:00 the next; a yearly one
+    repeats on the start day's month and day with no end.
+    """
+
+    title: str
+    start: datetime
+    end: datetime
+    all_day: bool
+    yearly: bool = False
+    note: str = ""
+
+
+def _graph_time(dt: datetime) -> dict:
+    return {"dateTime": dt.replace(tzinfo=None).isoformat(timespec="seconds"), "timeZone": "Europe/London"}
+
+
+def event_payload(ev: NewEvent) -> dict:
+    payload: dict = {
+        "subject": ev.title,
+        "isAllDay": ev.all_day,
+        "showAs": "free" if ev.all_day else "busy",
+        "start": _graph_time(ev.start),
+        "end": _graph_time(ev.end),
+        "body": {"contentType": "text", "content": ev.note},
+    }
+    if ev.all_day:
+        payload["isReminderOn"] = False
+    if ev.yearly:
+        payload["recurrence"] = {
+            "pattern": {"type": "absoluteYearly", "interval": 1, "month": ev.start.month, "dayOfMonth": ev.start.day},
+            "range": {"type": "noEnd", "startDate": ev.start.date().isoformat()},
+        }
+    return payload
 
 
 class BodyAuthError(AuthError):

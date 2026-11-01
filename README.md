@@ -129,6 +129,29 @@ On the first run after the feature is enabled, a one-off backfill scans the last
 for `calendar_event` matches. It creates no event dated before today, and if an account's
 authentication fails during it the backfill is tried again on the next run.
 
+### Events on request
+
+`scripts/add-event.sh` creates one event from the command line, for Dr Claw to run when
+someone asks for a calendar entry (from the kitchen wall or in chat). It uses the same Graph
+client and, inside the agent container, the same proxy-injected token as the runner.
+
+```sh
+scripts/add-event.sh --title "Christopher Moy's Birthday" --date 2026-11-05 --yearly
+scripts/add-event.sh --title Dentist --start 2026-11-06T14:00 --end 2026-11-06T15:00
+```
+
+- `--date YYYY-MM-DD` makes an all-day event (shown as free, no reminder); `--start` and
+  `--end` (`YYYY-MM-DDTHH:MM`, London wall-clock) make a timed one, shown as busy with
+  Outlook's default reminder. `--end` defaults to an hour after `--start`.
+- `--yearly` repeats the event every year on that day, for birthdays and anniversaries.
+  `--note` sets the event body.
+- It prints one line and exits 0 or 1: `CREATED: <title>, <when>`, `EXISTS: <title>, <when>`
+  when an event with that title is already on that day (nothing is added, so a retry is
+  safe), or `ERROR: <reason>` when nothing was created. The start must lie within 7 days
+  back and 2 years ahead of today.
+- Each creation appends a line to `data/events.log`. The command only ever creates events.
+- It needs the venv that `scripts/run.sh` maintains; run that once on a fresh checkout.
+
 ### Re-consent (one-off)
 
 The relay now requests the `Calendars.ReadWrite` scope. To grant it:
